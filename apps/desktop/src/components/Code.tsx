@@ -2,11 +2,13 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "r
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import hljs from "highlight.js";
 import {
+  ChevronDown,
   FileCode2,
   Folder,
   FolderGit2,
   Loader2,
   MessageSquare,
+  Minus,
   Pencil,
   Save,
   Terminal,
@@ -24,6 +26,8 @@ import {
 } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/panel";
+import { focusRing } from "@/components/ui/focus";
+import { useOptionalToast } from "@/components/ui/toast";
 import { Agents } from "@/components/Agents";
 import { Conversation } from "@/components/code/Conversation";
 import { PostureNote } from "@/components/code/PostureNote";
@@ -114,6 +118,26 @@ function isHtmlPath(path: string): boolean {
   return ext === "html" || ext === "htm";
 }
 
+/** Prose formats, wrapped rather than scrolled sideways.
+ *
+ * A markdown paragraph is one long line, and the viewer is a column a few hundred pixels wide: left
+ * unwrapped, every sentence ran off the right edge and the file was read by scrolling sideways line by
+ * line. Code keeps its lines whole, because there a wrapped line would look like two and indentation
+ * is meaning. */
+const PROSE_EXTS = new Set(["md", "markdown", "mdx", "txt", "rst"]);
+
+function isProsePath(path: string): boolean {
+  const ext = path.includes(".") ? path.split(".").pop()!.toLowerCase() : "";
+  return PROSE_EXTS.has(ext);
+}
+
+/** The same quiet icon button the cards and the dock panels carry in their corner. */
+const iconButton = cn(
+  "rounded-sm p-0.5 text-muted-foreground transition-colors duration-1 ease-out",
+  "hover:bg-surface-hover hover:text-foreground",
+  focusRing,
+);
+
 function isImagePath(path: string): boolean {
   const ext = path.includes(".") ? path.split(".").pop()!.toLowerCase() : "";
   return IMAGE_EXTS.has(ext);
@@ -176,9 +200,26 @@ function ImagePreview({ workspace, path }: { workspace: string; path: string }) 
 
 /** The center column: a syntax-highlighted viewer with an opt-in editor. Read-only is the default;
  *  "Edit" swaps in a mono textarea → Save PUTs it (atomic + newline-preserving + size-capped
- *  server-side). Truncated/binary files are NOT editable (saving would clobber the unseen remainder). */
-function Viewer({ workspace, path }: { workspace: string; path: string | null }) {
+ *  server-side). Truncated/binary files are NOT editable (saving would clobber the unseen remainder).
+ *
+ *  It minimises to its header and closes, with the controls and words the cards and the dock panels
+ *  already use: it could only be maximised, so a file opened once held a third of the window until
+ *  the conversation was switched. */
+function Viewer({
+  workspace,
+  path,
+  minimized = false,
+  onMinimize,
+  onClose,
+}: {
+  workspace: string;
+  path: string | null;
+  minimized?: boolean;
+  onMinimize?: (minimized: boolean) => void;
+  onClose?: () => void;
+}) {
   const t = useT();
+  const panelName = t("layout.panel.viewer");
   const qc = useQueryClient();
   const q = useQuery({
     queryKey: ["fs-file", workspace, path],
@@ -243,13 +284,16 @@ function Viewer({ workspace, path }: { workspace: string; path: string | null })
   }
 
   return (
-    <section data-panel="viewer" className="flex min-h-0 flex-1 flex-col border-hairline lg:border-r">
-      <div className="flex items-center gap-2 border-b border-hairline px-4 py-2.5">
+    <section
+      data-panel="viewer"
+      aria-label={panelName}
+      className={cn("flex min-h-0 flex-col border-hairline lg:border-r", minimized ? "flex-none" : "flex-1")}
+    >
+      <div className={cn("flex items-center gap-2 px-4 py-2.5", !minimized && "border-b border-hairline")}>
         <FileCode2 className="h-4 w-4 shrink-0 text-accent" />
         <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground">
           {path ?? t("code.noFile")}
         </span>
-        <MaximizeButton panel="viewer" name={t("layout.panel.viewer")} />
         {dirty ? <Badge tone="warn">{t("code.dirty")}</Badge> : null}
         {q.data?.truncated ? <Badge tone="warn">{t("code.truncated")}</Badge> : null}
         {savedFlash && !editing ? (
@@ -274,8 +318,38 @@ function Viewer({ workspace, path }: { workspace: string; path: string | null })
             <Pencil className="h-3.5 w-3.5" /> {t("code.edit")}
           </Button>
         ) : null}
+        <div className="flex shrink-0 items-center gap-0.5">
+          {onMinimize ? (
+            <Tooltip label={t(minimized ? "layout.card.expand" : "layout.card.minimize", { name: panelName })}>
+              <button
+                type="button"
+                aria-label={t(minimized ? "layout.card.expand" : "layout.card.minimize", { name: panelName })}
+                aria-expanded={!minimized}
+                onClick={() => onMinimize(!minimized)}
+                className={iconButton}
+              >
+                {minimized ? <ChevronDown className="h-3.5 w-3.5" /> : <Minus className="h-3.5 w-3.5" />}
+              </button>
+            </Tooltip>
+          ) : null}
+          <MaximizeButton panel="viewer" name={panelName} />
+          {onClose ? (
+            <Tooltip label={t("layout.card.close", { name: panelName })}>
+              <button
+                type="button"
+                aria-label={t("layout.card.close", { name: panelName })}
+                onClick={onClose}
+                className={iconButton}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </Tooltip>
+          ) : null}
+        </div>
       </div>
-      {editing ? (
+      {/* Minimised, the header is the whole pane. The editor stays mounted behind it, so a draft
+          survives being put away and brought back. */}
+      {minimized ? null : editing ? (
         <div className="flex min-h-0 flex-1 flex-col">
           <textarea
             className="min-h-0 flex-1 resize-none bg-transparent p-4 font-mono text-[12.5px] leading-relaxed text-foreground outline-hidden"
@@ -328,7 +402,12 @@ function Viewer({ workspace, path }: { workspace: string; path: string | null })
             // there because the preview is what someone opening an .html file came to see.
             <HtmlPreview workspace={workspace} path={path} source={q.data.content} />
           ) : (
-            <pre className="overflow-x-auto p-4 text-[12.5px] leading-relaxed">
+            <pre
+              className={cn(
+                "p-4 text-[12.5px] leading-relaxed",
+                isProsePath(path ?? "") ? "whitespace-pre-wrap break-words" : "overflow-x-auto",
+              )}
+            >
               <code className="hljs bg-transparent" dangerouslySetInnerHTML={{ __html: html }} />
             </pre>
           )}
@@ -358,6 +437,42 @@ export function Code() {
   useEffect(() => {
     if (!openFile && viewerMax) layoutDispatch({ type: "maximize", panel: null });
   }, [openFile, viewerMax, layoutDispatch]);
+  // Minimised or closed, the viewer's state lives in the layout like every other panel's, so the
+  // status bar's hidden tray lists a closed viewer with "Show" and the layout's undo covers both.
+  // It is a state of the FILE on screen, though: with no file open it goes back to open, so a viewer
+  // closed yesterday does not swallow the next file someone opens, and the tray never offers to show
+  // an empty pane.
+  const viewerMode = layout.panels.viewer.mode;
+  const viewerClosed = openFile !== null && viewerMode === "closed";
+  const viewerMin = openFile !== null && viewerMode === "minimized";
+  // The viewer as a pane with a body. Only that one takes the conversation's place while stacked:
+  // minimised it is a header under the conversation, closed it is nothing.
+  const viewerFull = openFile !== null && viewerMode === "open";
+  useEffect(() => {
+    if (!openFile && viewerMode !== "open") layoutDispatch({ type: "set-mode", panel: "viewer", mode: "open" });
+  }, [openFile, viewerMode, layoutDispatch]);
+  // Maximising a minimised viewer means wanting to read it: it opens, rather than filling the screen
+  // with a header.
+  useEffect(() => {
+    if (viewerMax && viewerMode === "minimized") layoutDispatch({ type: "set-mode", panel: "viewer", mode: "open" });
+  }, [viewerMax, viewerMode, layoutDispatch]);
+  const toast = useOptionalToast();
+  /** Opening a file is asking to see it: whatever the viewer was put away as, it comes back open. */
+  const showFile = useCallback(
+    (path: string) => {
+      setOpenFile(path);
+      layoutDispatch({ type: "set-mode", panel: "viewer", mode: "open" });
+    },
+    [layoutDispatch],
+  );
+  const closeViewer = useCallback(() => {
+    if (!layoutDispatch({ type: "set-mode", panel: "viewer", mode: "closed" })) return;
+    const name = t("layout.panel.viewer");
+    toast(t("layout.card.closed", { name }), "info", {
+      label: t("layout.undo"),
+      run: () => void layoutDispatch({ type: "set-mode", panel: "viewer", mode: "open" }),
+    });
+  }, [layoutDispatch, t, toast]);
   const [projectDraft, setProjectDraft] = useState(readWorkspace);
   // Which stored conversation is on screen, and a key that remounts the transcript when it
   // changes — the conversation holds its exchanges in state, so switching sessions has to
@@ -655,7 +770,7 @@ export function Code() {
             conversation rather than sharing the height with it — which is what the note over
             the viewer already says it is: a consequence of opening a file, not a third of the
             window. Close the file and the conversation is back. */}
-        <main className={cn("flex min-h-0 min-w-0 flex-1 flex-col", openFile && "max-lg:hidden", viewerMax && "hidden")}>
+        <main className={cn("flex min-h-0 min-w-0 flex-1 flex-col", viewerFull && "max-lg:hidden", viewerMax && "hidden")}>
           <Conversation
             key={conversationKey}
             resumeSession={sessionId}
@@ -664,7 +779,7 @@ export function Code() {
             onStyleRestored={(restored) => setStyle((current) => (current === "default" ? restored : current))}
             workspace={workspace}
             openFile={openFile}
-            onOpenFile={setOpenFile}
+            onOpenFile={showFile}
             // Two conversations at once: this one in a window of its own, the next one here.
             onOpenWindow={(id) =>
               window.open(conversationUrl(id), conversationWindowName(id), CONVERSATION_WINDOW_FEATURES)
@@ -788,18 +903,27 @@ export function Code() {
         {/* `min-w-0` for the same reason as the conversation column beside it: a fixed
             width is a BASIS, not a ceiling, and a flex child without it will not shrink —
             it overflowed the row instead and painted across the activity panel. */}
+        {/* Closed, it stays mounted and hidden rather than unmounted: the toast's Undo and the tray's
+            Show bring back the same file, with an unsaved draft still in it. */}
         {openFile ? (
           <>
-          {viewerMax ? null : <Splitter region="viewer" grows="left" className="hidden lg:block" />}
+          {viewerMax || viewerMin || viewerClosed ? null : <Splitter region="viewer" grows="left" className="hidden lg:block" />}
           {/* The width comes from the layout through a variable, because it applies only side by side:
               below `lg` the viewer REPLACES the conversation and takes the whole column. */}
           <div
+            hidden={viewerClosed}
             // One line on purpose: `columns-can-shrink.test.ts` reads the roles off it. Maximised (phase 5), the
             // viewer drops its width and grows; otherwise it holds `--viewer-w` from `lg` up.
-            className={cn("flex min-h-0 min-w-0 flex-1 flex-col border-hairline", viewerMax ? "lg:w-auto" : "lg:w-(--viewer-w) lg:flex-none lg:shrink-0 lg:border-l")}
+            className={cn("flex min-h-0 min-w-0 flex-1 flex-col border-hairline", viewerMax ? "lg:w-auto" : "lg:w-(--viewer-w) lg:flex-none lg:shrink-0 lg:border-l", viewerMin && "max-lg:flex-none max-lg:border-t lg:w-72 lg:self-start lg:border-b")}
             style={{ "--viewer-w": `${layout.regions.viewer.size ?? 448}px` } as CSSProperties}
           >
-            <Viewer workspace={workspace} path={openFile} />
+            <Viewer
+              workspace={workspace}
+              path={openFile}
+              minimized={viewerMin}
+              onMinimize={(min) => layoutDispatch({ type: "set-mode", panel: "viewer", mode: min ? "minimized" : "open" })}
+              onClose={closeViewer}
+            />
           </div>
           </>
         ) : null}
