@@ -477,22 +477,51 @@ class BridgeStatusOut(BaseModel):
     pending_approvals: int
 
 
-def _job_out(job: BridgeJob, since: int, tokens: list[str]) -> dict[str, Any]:
-    pending = (
-        [
-            {"id": a.get("id", ""), "action": a.get("action", ""), "reason": a.get("reason", "")}
-            for a in job.approvals
-        ]
-        if job.blocked
-        else []
-    )
+def _still_waiting(
+    job: BridgeJob, is_waiting: Callable[[str], bool], now: float
+) -> list[dict[str, Any]]:
+    """The questions this job asked that are still waiting, each once, with the time silence leaves.
+
+    ``job.approvals`` is every question the stream ever announced; the stream never says when one
+    is answered or refused by silence, so a list built from it alone kept every answered question
+    of a long run (2026-10-10: ~20 of them, while the queue on disk was empty). ``is_waiting`` reads
+    the queue — the same files ``GET /api/approvals`` lists.
+    """
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for a in job.approvals:
+        qid = str(a.get("id") or "")
+        if not qid or qid in seen or not is_waiting(qid):
+            continue
+        seen.add(qid)
+        item: dict[str, Any] = {
+            "id": qid,
+            "action": a.get("action", ""),
+            "reason": a.get("reason", ""),
+        }
+        asked, wait = a.get("asked_at"), a.get("wait_seconds")
+        if isinstance(asked, (int, float)) and isinstance(wait, (int, float)):
+            # Silence refuses it at the end of its wait (`pending.ask_durably`): a client polling
+            # the job can tell a question with minutes left from one about to be refused.
+            item["seconds_left"] = max(0, round(float(asked) + float(wait) - now))
+        out.append(item)
+    return out
+
+
+def _job_out(
+    job: BridgeJob, since: int, tokens: list[str], is_waiting: Callable[[str], bool]
+) -> dict[str, Any]:
+    pending = [] if job.done else _still_waiting(job, is_waiting, time.time())
     return dict(
         scrub(
             {
                 "job_id": job.id,
                 "route": job.route,
                 "done": job.done,
-                "waiting_for_approval": job.blocked,
+                # From the queue, not from the last frame: a question answered or refused by silence
+                # leaves no frame behind it, and one still waiting is still waiting whatever a
+                # parallel tool call printed after it.
+                "waiting_for_approval": bool(pending),
                 "pending_approvals": pending,
                 "session_id": job.session_id,
                 "turn_id": job.turn_id,
@@ -606,6 +635,11 @@ def register_bridge_api(
 
     def hidden() -> list[str]:
         return [t for t in (bridge.token, live_settings().server_token) if t]
+
+    def waiting(request_id: str) -> bool:
+        from chimera.governance.pending import is_waiting
+
+        return is_waiting(Path(live_settings().home), request_id)
 
     async def plain(
         method: str, path: str, query: dict[str, Any] | None = None, body: Any = None
@@ -1085,7 +1119,7 @@ def register_bridge_api(
         await jobs.wait(job, wait)
         if job.blocked:
             await asyncio.sleep(0.2)  # let a question's sibling frames land with it
-        return {"route": req.route, "status": 200, "job": _job_out(job, 0, hidden())}
+        return {"route": req.route, "status": 200, "job": _job_out(job, 0, hidden(), waiting)}
 
     @app.get("/api/bridge/jobs/{job_id}", response_model=BridgeJobOut, tags=["bridge"])
     async def bridge_job(
@@ -1098,4 +1132,4 @@ def register_bridge_api(
                 status_code=404, detail="no such job (they are kept in memory only)"
             )
         await jobs.wait(job, wait_seconds)
-        return _job_out(job, since, hidden())
+        return _job_out(job, since, hidden(), waiting)

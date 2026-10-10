@@ -634,6 +634,9 @@ def test_a_run_that_stops_for_an_approval_answers_at_once_and_finishes_later(
         return EventSourceResponse(frames())
 
     monkeypatch.setitem(ROUTES, "test.stream", BridgeRoute("POST", "/api/test/stream", stream=True))
+    # The question is on disk, as `pending.ask_durably` writes it before the frame goes out: the
+    # job's list reads the queue, so a frame with no question behind it is not a waiting question.
+    _ask(tmp_path / "home", "q9")
     headers = {"Authorization": f"Bearer {app.state.desktop_bridge.token}"}
     with TestClient(app) as client:
         started = time.monotonic()
