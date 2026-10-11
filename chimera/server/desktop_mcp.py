@@ -258,11 +258,20 @@ class DesktopMCP:
     def _job_spec() -> dict[str, Any]:
         return {
             "name": "desktop_job",
-            "description": "Check on a job (a send, a run, a batch) started through this bridge.",
+            "description": (
+                "Check on a job (a send, a run, a batch) started through this bridge. With "
+                "stop=true, stop the conversation turn a desktop_send started, running or queued "
+                "for its folder: the step in progress finishes first, nothing further runs."
+            ),
             "inputSchema": {
                 "type": "object",
                 "properties": {
                     "job_id": {"type": "string"},
+                    "stop": {
+                        "type": "boolean",
+                        "description": "Stop the turn this desktop_send job started.",
+                        "default": False,
+                    },
                     "since": {
                         "type": "integer",
                         "description": "Only events after this number.",
@@ -332,6 +341,15 @@ class DesktopMCP:
             status, data = self.http("GET", f"{url}/api/bridge/status", token, None, 30.0)
             return self._render(status, data, token)
         if name == "desktop_job":
+            stopped = ""
+            if arguments.get("stop") is True:
+                stop_id = quote(str(arguments.get("job_id", "")), safe="")
+                status, data = self.http(
+                    "POST", f"{url}/api/bridge/jobs/{stop_id}/stop", token, None, 30.0
+                )
+                if status != 200:
+                    return self._render(status, data, token)
+                stopped = "requested: the step in progress finishes, then nothing further runs"
             query = urlencode(
                 {
                     "since": int(arguments.get("since", 0) or 0),
@@ -343,7 +361,16 @@ class DesktopMCP:
             status, data = self.http(
                 "GET", f"{url}/api/bridge/jobs/{job_id}?{query}", token, None, wait + 30
             )
-            return self._render(status, _compact_job(data) if status == 200 else data, token)
+            record = _compact_job(data) if status == 200 else data
+            if status == 200 and isinstance(record, dict):
+                # How the job stands, as the record's first field: still JSON for a client that
+                # parses it, and read before "done": false by one that does not (plan M1).
+                head = self._job_head(record)
+                if head:
+                    record = {"status": " ".join(line.strip() for line in head), **record}
+                if stopped:
+                    record = {"stop": stopped, **record}
+            return self._render(status, record, token)
         if name == "desktop_send":
             body = {
                 k: arguments[k]
@@ -432,8 +459,22 @@ class DesktopMCP:
             return f"Refused by the app: {self._text(detail, token)}"
         return f"The app answered {status}: {self._text(detail, token)}"
 
-    def _render_job(self, job: dict[str, Any], token: str) -> str:
+    @staticmethod
+    def _job_head(job: dict[str, Any]) -> list[str]:
+        """The lines that say how a job stands, first thing in what `desktop_send` and `desktop_job` return.
+
+        One function for both: `desktop_job` returned the job's JSON alone, so a client polling a
+        failed turn read `"done": false` at the top and had to find `"error"` further down (plan M1).
+        """
         head: list[str] = []
+        job_id = job.get("job_id")
+        # A conversation turn's job can be stopped from here (plan M1); each "not finished" line
+        # says how.
+        stop_hint = (
+            f" Stop it with desktop_job job_id={job_id} stop=true."
+            if job.get("route") == "conversations.send"
+            else ""
+        )
         if job.get("waiting_for_approval"):
             head.append(
                 "WAITING FOR THE OWNER'S APPROVAL in the Chimera app. The run is paused on:"
@@ -446,11 +487,30 @@ class DesktopMCP:
                     # this list read as answered when it had been refused for waiting too long.
                     line += f" — refused by silence in {int(left)}s if nobody answers"
                 head.append(line)
-            head.append(f"Check again with desktop_job job_id={job.get('job_id')}.")
-        elif not job.get("done"):
-            head.append(f"Still running. Check again with desktop_job job_id={job.get('job_id')}.")
+            head.append(f"Check again with desktop_job job_id={job_id}.{stop_hint}")
         elif job.get("error"):
+            # Before "still running": the turn has said it failed even when the stream carrying it
+            # has not closed, and "still running" over a failure is what kept a failed turn looking
+            # alive for 90 minutes (2026-10-09, plan M1).
             head.append(f"Ended with an error: {job.get('error')}")
+        elif job.get("waiting_for_folder"):
+            head.append(
+                "WAITING FOR THE FOLDER: another conversation or run is working in this folder, and "
+                f"this turn starts when it finishes. Check again with desktop_job job_id={job_id}."
+                + stop_hint
+            )
+        elif not job.get("done") and not job.get("ended"):
+            if job.get("turn_running") is False:
+                head.append(
+                    "The app no longer lists this turn as running, but its stream has not closed; "
+                    f"check again with desktop_job job_id={job_id}."
+                )
+            else:
+                head.append(f"Still running. Check again with desktop_job job_id={job_id}.{stop_hint}")
+        return head
+
+    def _render_job(self, job: dict[str, Any], token: str) -> str:
+        head = self._job_head(job)
         result = job.get("result")
         reply = ""
         if isinstance(result, dict):
