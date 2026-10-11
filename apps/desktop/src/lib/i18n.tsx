@@ -802,6 +802,8 @@ const en: Dict = {
   "settings.row.botToken": "{platform} bot token",
   "settings.hint.botToken": "so the agent can reach you on {platform}",
   "settings.row.botRun": "Run the {platform} bot",
+  "settings.messaging.pairing":
+    "Waiting for its owner: send {code} to the bot in a direct message. The first person who sends it becomes the only one it answers. The code expires 10 minutes after the bot starts.",
   "settings.hint.botRun": "connect the bot now (and at app start)",
   "settings.messaging.note":
     "Set a bot token first, then turn it on — the bot connects while the app is open.",
@@ -3050,6 +3052,8 @@ const pt: Dict = {
   "settings.row.botToken": "Token do bot do {platform}",
   "settings.hint.botToken": "para o agente te alcançar no {platform}",
   "settings.row.botRun": "Rodar o bot do {platform}",
+  "settings.messaging.pairing":
+    "Aguardando o dono: envie {code} ao bot por mensagem direta. A primeira pessoa que enviar passa a ser a única a quem ele responde. O código vale por 10 minutos depois que o bot liga.",
   "settings.hint.botRun": "conectar o bot agora (e ao iniciar o app)",
   "settings.messaging.note":
     "Defina um token de bot primeiro, depois ative — o bot conecta enquanto o app está aberto.",
@@ -4586,6 +4590,8 @@ const es: Dict = {
   "settings.hint.botToken":
     "para que el agente pueda contactarte en {platform}",
   "settings.row.botRun": "Ejecutar el bot de {platform}",
+  "settings.messaging.pairing":
+    "Esperando a su dueño: envía {code} al bot por mensaje directo. La primera persona que lo envíe será la única a la que responda. El código caduca 10 minutos después de que el bot arranque.",
   "settings.hint.botRun": "conecta el bot ahora (y al iniciar la app)",
   "settings.messaging.note":
     "Primero pon un token de bot y luego actívalo — el bot se conecta mientras la app está abierta.",
@@ -6856,6 +6862,8 @@ const fr: Dict = {
   "settings.hint.botToken":
     "pour que l'agent puisse vous joindre sur {platform}",
   "settings.row.botRun": "Lancer le bot {platform}",
+  "settings.messaging.pairing":
+    "En attente de son propriétaire : envoyez {code} au bot en message privé. La première personne qui l'envoie devient la seule à qui il répond. Le code expire 10 minutes après le démarrage du bot.",
   "settings.hint.botRun":
     "connecter le bot maintenant (et au démarrage de l'app)",
   "settings.messaging.note":
@@ -9140,6 +9148,8 @@ const de: Dict = {
   "settings.hint.botToken":
     "damit dich der Agent auf {platform} erreichen kann",
   "settings.row.botRun": "{platform}-Bot starten",
+  "settings.messaging.pairing":
+    "Wartet auf seinen Besitzer: Sende {code} per Direktnachricht an den Bot. Wer ihn zuerst sendet, ist danach der Einzige, dem er antwortet. Der Code verfällt 10 Minuten nach dem Start des Bots.",
   "settings.hint.botRun": "den Bot jetzt verbinden (und beim App-Start)",
   "settings.messaging.note":
     "Zuerst ein Bot-Token setzen, dann einschalten — der Bot ist verbunden, solange die App offen ist.",
@@ -11418,6 +11428,8 @@ const zh: Dict = {
   "settings.row.botToken": "{platform} 机器人令牌",
   "settings.hint.botToken": "这样智能体就能在 {platform} 上找到你",
   "settings.row.botRun": "运行 {platform} 机器人",
+  "settings.messaging.pairing":
+    "等待所有者：通过私信把 {code} 发给机器人。第一个发送的人将成为它唯一回复的人。代码在机器人启动 10 分钟后失效。",
   "settings.hint.botRun": "现在连接机器人（以及应用启动时）",
   "settings.messaging.note":
     "先设置机器人令牌，再打开开关——应用开着时机器人保持连接。",
@@ -13618,6 +13630,8 @@ const ja: Dict = {
   "settings.hint.botToken":
     "エージェントが {platform} であなたに連絡できるようにします",
   "settings.row.botRun": "{platform} ボットを実行",
+  "settings.messaging.pairing":
+    "所有者を待っています：ボットにダイレクトメッセージで {code} を送ってください。最初に送った人だけにボットが応答するようになります。コードはボットの起動から10分で失効します。",
   "settings.hint.botRun": "今すぐボットを接続する（アプリ起動時にも）",
   "settings.messaging.note":
     "先にボットトークンを設定してから有効にしてください — ボットはアプリが開いている間だけ接続します。",
@@ -16602,6 +16616,8 @@ const it: Dict = {
   "settings.row.botToken": "Token del bot {platform}",
   "settings.hint.botToken": "così l'agente può raggiungerti su {platform}",
   "settings.row.botRun": "Avvia il bot {platform}",
+  "settings.messaging.pairing":
+    "In attesa del proprietario: invia {code} al bot in un messaggio diretto. La prima persona che lo invia diventa l'unica a cui risponde. Il codice scade 10 minuti dopo l'avvio del bot.",
   "settings.hint.botRun": "connetti il bot ora (e all'avvio dell'app)",
   "settings.messaging.note":
     "Imposta prima un token del bot, poi attivalo — il bot si connette mentre l'app è aperta.",
@@ -18876,6 +18892,8 @@ const pl: Dict = {
   "settings.hint.botToken":
     "żeby agent mógł się z tobą skontaktować przez {platform}",
   "settings.row.botRun": "Uruchom bota {platform}",
+  "settings.messaging.pairing":
+    "Czeka na właściciela: wyślij {code} do bota w wiadomości prywatnej. Pierwsza osoba, która go wyśle, stanie się jedyną, której bot odpowiada. Kod wygasa 10 minut po uruchomieniu bota.",
   "settings.hint.botRun": "połącz bota teraz (i przy starcie aplikacji)",
   "settings.messaging.note":
     "Najpierw ustaw token bota, potem go włącz — bot łączy się, gdy aplikacja jest otwarta.",
@@ -21145,6 +21163,8 @@ const ru: Dict = {
   "settings.row.botToken": "Токен бота {platform}",
   "settings.hint.botToken": "чтобы агент мог связаться с вами в {platform}",
   "settings.row.botRun": "Запускать бота {platform}",
+  "settings.messaging.pairing":
+    "Ожидает владельца: отправьте {code} боту в личном сообщении. Первый, кто его отправит, станет единственным, кому бот отвечает. Код истекает через 10 минут после запуска бота.",
   "settings.hint.botRun": "подключить бота сейчас (и при старте приложения)",
   "settings.messaging.note":
     "Сначала задайте токен бота, потом включите его — бот подключён, пока приложение открыто.",

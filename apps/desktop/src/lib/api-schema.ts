@@ -8384,6 +8384,18 @@ export interface components {
             configured: boolean;
             /** Error */
             error?: string | null;
+            /**
+             * Open
+             * @default false
+             */
+            open: boolean;
+            /**
+             * Pairing
+             * @default false
+             */
+            pairing: boolean;
+            /** Pairing Code */
+            pairing_code?: string | null;
             /** Running */
             running: boolean;
         };

@@ -68,6 +68,9 @@ class MessagingManager:
         self._adapter_factory = adapter_factory or self._default_adapter
         self._running: dict[str, _Running] = {}
         self._lock = threading.Lock()
+        # Per platform, how the last adapter built here admits people: its pairing flow, or open.
+        self._pairings: dict[str, Any] = {}
+        self._open: dict[str, bool] = {}
 
     # --- introspection -------------------------------------------------------------------------
     def platforms(self) -> tuple[str, ...]:
@@ -87,10 +90,18 @@ class MessagingManager:
         out: dict[str, dict[str, Any]] = {}
         for platform in _TOKEN_ATTR:
             rec = self._running.get(platform)
+            running = self.is_running(platform)
+            pairing = self._pairings.get(platform) if running else None
+            code = pairing.pending_code() if pairing is not None else None
             out[platform] = {
                 "configured": self.configured(platform),
-                "running": self.is_running(platform),
+                "running": running,
                 "error": rec.error if rec else None,
+                # On the app's own card, because the console that logs it is read by nobody: a code
+                # only in the log could never be used (plan M7).
+                "pairing_code": code,
+                "pairing": code is not None,
+                "open": running and self._open.get(platform, False),
             }
         return out
 
@@ -104,7 +115,7 @@ class MessagingManager:
         from chimera.server.allowlist import (
             PairingFlow,
             allowed_users_for,
-            is_new_install,
+            app_bot_is_new,
             open_bot_warning,
         )
 
@@ -114,7 +125,9 @@ class MessagingManager:
         # serve` did; the two paths share one helper now so they cannot disagree about who.
         allowed = allowed_users_for(self._settings, platform)
         if allowed is None:
-            if is_new_install(self._settings, platform):
+            # Not `is_new_install`: it asks whether the data folder is empty, and by the time the
+            # app starts a bot it never is, so every bot started here ran open (plan M7).
+            if app_bot_is_new(self._settings, platform):
                 pairing = PairingFlow(platform, self._settings.home)
                 _log.warning(
                     "Pairing code for %s: %s (expires in 10 minutes; first DM claims it)",
@@ -126,6 +139,8 @@ class MessagingManager:
                 _log.warning("NOTICE: %s", open_bot_warning(platform))
         else:
             pairing = None
+        self._pairings[platform] = pairing
+        self._open[platform] = allowed is None and pairing is None
         if platform == "discord":
             from chimera.server import DiscordAdapter
             from chimera.server.attachments import attach_enabled, attach_refusal
