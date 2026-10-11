@@ -152,8 +152,10 @@ describe("the Code screen's three columns", () => {
     expect(rail, "and uncapped once it is a column again").toContain("lg:max-h-none");
 
     const source = readFileSync(join(SRC, "components", "Code.tsx"), "utf8");
+    // `viewerFull`, not `openFile`, since the viewer minimises and closes: a minimised viewer is a
+    // header under the conversation and a closed one is hidden, so neither may take its place.
     expect(
-      /openFile && "max-lg:hidden"/.test(source),
+      /viewerFull && "max-lg:hidden"/.test(source),
       "the conversation must yield to the viewer while stacked",
     ).toBe(true);
   });

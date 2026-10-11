@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Code } from "@/components/Code";
@@ -253,5 +253,105 @@ describe("Code — the file viewer", () => {
 
     expect(await screen.findByRole("button", { name: "src/app.py" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /beside$/ })).not.toBeInTheDocument();
+  });
+});
+
+/** The viewer's own pane — a region named after it — so a path or a button in the transcript is never
+ *  mistaken for the viewer's. `queryByRole` skips a hidden region, which is what "closed" is. */
+function viewerPane(): HTMLElement | null {
+  return screen.queryByRole("region", { name: "File viewer" });
+}
+
+// The owner's ask (2026-10-10): the viewer could only be maximised, so a file opened once held a third of
+// the window. It now minimises to its header and closes, with the controls the cards and the dock panels
+// already carry.
+describe("Code — the file viewer minimises and closes", () => {
+  beforeEach(() => {
+    vi.mocked(getPostureFacts).mockResolvedValue(postureFacts());
+    vi.mocked(getGitStatus).mockResolvedValue(gitStatus());
+    vi.mocked(getRuns).mockResolvedValue([]);
+    vi.mocked(streamRun).mockImplementation(async () => {});
+  });
+
+  it("carries minimise, maximise and close, each named for the viewer", async () => {
+    await openFile();
+
+    const pane = await waitFor(() => viewerPane() as HTMLElement);
+    expect(within(pane).getByRole("button", { name: "Minimize File viewer" })).toHaveAttribute("aria-expanded", "true");
+    expect(within(pane).getByRole("button", { name: "Maximize File viewer" })).toBeInTheDocument();
+    expect(within(pane).getByRole("button", { name: "Close File viewer" })).toBeInTheDocument();
+  });
+
+  it("minimises to its header and restores the content", async () => {
+    const user = await openFile();
+    const pane = await waitFor(() => viewerPane() as HTMLElement);
+    await within(pane).findByText(/print/);
+
+    await user.click(within(pane).getByRole("button", { name: "Minimize File viewer" }));
+
+    // The header stays — which file, and the way back — and the body is gone.
+    expect(within(pane).getByText("src/app.py")).toBeInTheDocument();
+    expect(within(pane).queryByText(/print/)).not.toBeInTheDocument();
+    const expand = within(pane).getByRole("button", { name: "Expand File viewer" });
+    expect(expand).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(expand);
+
+    expect(await within(pane).findByText(/print/)).toBeInTheDocument();
+  });
+
+  it("closes, leaving the conversation", async () => {
+    const user = await openFile();
+    const pane = await waitFor(() => viewerPane() as HTMLElement);
+
+    await user.click(within(pane).getByRole("button", { name: "Close File viewer" }));
+
+    expect(viewerPane()).toBeNull();
+    expect(screen.getByPlaceholderText(/Ask about this code/i)).toBeInTheDocument();
+  });
+
+  it("comes back when a file is opened again", async () => {
+    const user = await openFile();
+    const pane = await waitFor(() => viewerPane() as HTMLElement);
+    await user.click(within(pane).getByRole("button", { name: "Close File viewer" }));
+    expect(viewerPane()).toBeNull();
+
+    // The path in the transcript is the way a file is opened; opening it is asking to see it.
+    await user.click(screen.getByRole("button", { name: "src/app.py" }));
+
+    const again = await waitFor(() => viewerPane() as HTMLElement);
+    expect(await within(again).findByText(/print/)).toBeInTheDocument();
+  });
+
+  it("opens a minimised viewer when a file is opened again", async () => {
+    const user = await openFile();
+    const pane = await waitFor(() => viewerPane() as HTMLElement);
+    await user.click(within(pane).getByRole("button", { name: "Minimize File viewer" }));
+
+    await user.click(screen.getByRole("button", { name: "src/app.py" }));
+
+    expect(await within(viewerPane() as HTMLElement).findByText(/print/)).toBeInTheDocument();
+  });
+
+  // A markdown paragraph is one long line; unwrapped in a column a few hundred pixels wide it ran off
+  // the right edge (the owner's screenshot of `research/SINTESE-final.md`).
+  it("wraps a markdown file", async () => {
+    await openFile(
+      fsFile({ path: "research/SINTESE-final.md", content: "# Síntese\n\nUma linha longa." }),
+      "research/SINTESE-final.md",
+    );
+    const pane = await waitFor(() => viewerPane() as HTMLElement);
+    await within(pane).findByText(/Síntese/);
+    // The wrapping is a class on the <pre>; there is no role to reach it by.
+    expect(pane.querySelector("pre")).toHaveClass("whitespace-pre-wrap");
+  });
+
+  it("keeps code unwrapped, scrolling sideways", async () => {
+    await openFile();
+    const pane = await waitFor(() => viewerPane() as HTMLElement);
+    await within(pane).findByText(/print/);
+    const pre = pane.querySelector("pre");
+    expect(pre).toHaveClass("overflow-x-auto");
+    expect(pre).not.toHaveClass("whitespace-pre-wrap");
   });
 });
