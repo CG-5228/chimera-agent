@@ -152,6 +152,15 @@ class _SearchFiles(_Adapted):
 
     def __init__(self, inner: Tool) -> None:
         super().__init__("search_files", "Search file contents by regular expression.", inner)
+        # Declared, not only translated: the registry refuses a name the schema does not list, and
+        # inheriting grep's schema would have refused `file_glob` — the one name this alias exists
+        # to accept. A copy, so grep's own schema is never mutated.
+        properties = dict(inner.parameters.get("properties", {}))
+        properties["file_glob"] = {
+            "type": "string",
+            "description": "Optional filename glob filter, e.g. '*.py' (same as `glob`).",
+        }
+        self.parameters = {**inner.parameters, "properties": properties}
 
     def _translate(self, kwargs: dict[str, Any]) -> dict[str, Any]:
         out = dict(kwargs)

@@ -32,7 +32,7 @@ from typing import Any
 
 from chimera.governance.allowlist import restrict_registry
 from chimera.telemetry import get_logger
-from chimera.tools.base import Tool
+from chimera.tools.base import Tool, unknown_arguments_error
 from chimera.tools.registry import ToolRegistry
 
 _log = get_logger("tools.defer")
@@ -206,7 +206,8 @@ class ToolCallTool(Tool):
         argumentos = kwargs.get("arguments") or {}
         if not isinstance(argumentos, dict):
             return "arguments must be an object"
-        return tool.run(**argumentos)
+        # The registry checks a call's names; this proxy runs the tool itself, so it checks here.
+        return unknown_arguments_error(tool, argumentos) or tool.run(**argumentos)
 
 
 def defer_builtins(

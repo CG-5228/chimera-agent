@@ -57,6 +57,13 @@ class MCPTool(Tool):
     #: ``LedgeredTool`` to taint-track it regardless of name.
     untrusted_output = True
 
+    #: The arguments go to the server verbatim and the server validates them against its own schema,
+    #: where an unlisted name is allowed unless ``additionalProperties`` is false (JSON Schema's
+    #: default). Refusing them here would second-guess a validator that exists, with a stricter rule
+    #: than the one the server published. An OpenAPI connector is the opposite case and stays closed:
+    #: its schema is generated here and its ``run`` keeps only the path, query and body names.
+    open_arguments = True
+
     def __init__(
         self,
         spec: MCPToolSpec,

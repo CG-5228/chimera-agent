@@ -46,7 +46,7 @@ import json
 from typing import Any
 
 from chimera.telemetry import get_logger
-from chimera.tools.base import Tool
+from chimera.tools.base import Tool, unknown_arguments_error
 from chimera.tools.registry import ToolRegistry
 
 _log = get_logger("integrations.mcp_defer")
@@ -181,7 +181,9 @@ class McpCallTool(Tool):
                 return "error: `arguments` must be an object (or a JSON object as a string)"
         if not isinstance(raw, dict):
             return "error: `arguments` must be an object"
-        return tool.run(**raw)
+        # Usually a no-op: an MCP tool's names are its server's to judge. Unless its schema says
+        # `additionalProperties: false`, which the registry would have enforced had it run it.
+        return unknown_arguments_error(tool, raw) or tool.run(**raw)
 
 
 def _unknown(name: str, catalogue: _McpTools) -> str:
