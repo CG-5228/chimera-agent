@@ -19,6 +19,7 @@ import math
 import threading
 import time
 import uuid
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -1458,6 +1459,8 @@ class Agent:
                 and result.prompt_tokens
                 and budget.should_compact(result.prompt_tokens)
             ):
+                # The run's own count, restored after the history that held it is gone (M2).
+                self.run_state.tool_calls = dict(Counter(tool_names))
                 messages, compacted = compact(
                     messages,
                     keep_recent=self.config.keep_recent,
