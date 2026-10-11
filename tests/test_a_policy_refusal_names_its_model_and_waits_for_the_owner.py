@@ -270,7 +270,8 @@ def test_any_other_failure_carries_no_policy_reason(
 
     # No reason means no "Try with another model" button: an outage is not a refusal.
     assert "reason" not in error
-    assert error["message"] == "the coding turn failed"
+    # Generic, as before; since plan M5 it names the exception's class and, in the app, the log.
+    assert error["message"].startswith("the coding turn failed (")
 
 
 def test_the_owners_retry_is_written_on_the_receipt_and_kept(

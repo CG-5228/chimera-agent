@@ -94,10 +94,14 @@ def test_an_internal_failure_stays_generic() -> None:
     """A bug in this repository is ours to debug, and a stack trace in the composer helps nobody.
 
     This is the half of the old behaviour worth keeping: the reason "the coding turn failed" existed
-    at all. What was wrong was applying it to the provider's refusals too.
+    at all. What was wrong was applying it to the provider's refusals too. Since plan M5 the
+    sentence also names the exception's class (not its text) and where the log is, so the internal
+    message still never reaches the composer.
     """
-    assert _native_failure(KeyError("some internal state")) == "the coding turn failed"
-    assert _native_failure(Exception("")) == "the coding turn failed"
+    out = _native_failure(KeyError("some internal state"))
+    assert out.startswith("the coding turn failed (KeyError)")
+    assert "some internal state" not in out
+    assert _native_failure(Exception("")).startswith("the coding turn failed (Exception)")
 
 
 @pytest.mark.parametrize(
