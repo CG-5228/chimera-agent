@@ -479,6 +479,36 @@ def _native_failure(exc: Exception) -> str:
     return first if len(first) <= 300 else f"{first[:297]}…"
 
 
+def turn_can_change_the_folder(agent: Any, provider: str | None) -> bool:
+    """Whether a coding turn could change its folder, which is what its folder lock is for.
+
+    Read off the tools the turn was actually given, because that is what decides it: a ``read_only``
+    reach removes every write and exec tool (`chimera/api/posture.py`), and so may a deployment
+    denylist. Such a turn needs no lock, and taking one made it queue behind a conversation that was
+    writing, for nothing (plan M20, observed 2026-10-09/10: research conversations that only read,
+    waiting one behind another in the same folder).
+
+    Yes whenever it cannot be shown otherwise: an external agent (it edits with its own tools), an
+    agent whose tools cannot be listed, the deferred proxies (`tool_call` and `mcp_call` reach tools
+    not in the list), and an MCP tool (its effects are the server's, not ours to know).
+    """
+    from chimera.governance.ledger import EXEC_TOOLS, WRITE_TOOLS
+
+    if (provider or "").strip():
+        return True
+    registry = getattr(agent, "tools", None)
+    names = getattr(registry, "names", None)
+    get = getattr(registry, "get", None)
+    if not callable(names) or not callable(get):
+        return True
+    for name in names():
+        if name in WRITE_TOOLS or name in EXEC_TOOLS or name in {"tool_call", "mcp_call"}:
+            return True
+        if getattr(get(name), "open_arguments", False):
+            return True
+    return False
+
+
 def resolve_posture(posture: Posture | None) -> ResolvedPosture:
     """The posture's effect, with None meaning "no posture" rather than "the default posture".
 
@@ -2369,7 +2399,10 @@ def register_code_api(
 
                 # The folder first: the snapshot, the run, the verification and the undo offer all
                 # describe this turn alone. A turn that waits says so, and Stop still reaches it.
-                if not folder.acquire(blocking=False):
+                # A turn that cannot change the folder neither waits nor makes anyone wait (M20).
+                if not turn_can_change_the_folder(agent, req.provider):
+                    pass
+                elif not folder.acquire(blocking=False):
                     on_notice(
                         "folder_busy",
                         "Waiting: another conversation or run is working in this folder. This one "
@@ -2379,7 +2412,9 @@ def register_code_api(
                     while not folder.acquire(timeout=0.25):
                         if stop_signal():
                             raise _StoppedWhileWaiting
-                holds_folder = True
+                    holds_folder = True
+                else:
+                    holds_folder = True
                 if stop_signal():
                     raise _StoppedWhileWaiting
 
