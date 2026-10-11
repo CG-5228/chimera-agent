@@ -65,7 +65,9 @@ def test_the_real_clock_gap_is_milliseconds(tmp_path: Path) -> None:
     """S4: on the real clock the gap is scheduling noise, not seconds."""
     rows = bench_run.probe_real_clock(_fresh_home(tmp_path))
     assert len(rows) == bench_run.REAL_RUNS
-    assert all(r["outcome"] == "approved" for r in rows)
+    # Said, not crashed: a run whose answer was written after the wait ran out measured no gap.
+    late = [r for r in rows if r["outcome"] != "approved"]
+    assert not late, f"the answer arrived after the {bench_run.REAL_WAIT}s wait: {late}"
     assert all(r["gap_seconds"] <= bench_run.REAL_POLL + 1.0 for r in rows)
 
 

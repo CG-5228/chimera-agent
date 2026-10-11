@@ -410,6 +410,52 @@ describe("ApprovalCard — the countdown, and what zero means", () => {
       expect(screen.getByText(/chimera approve abc123 --yes --code <code>/)).toBeInTheDocument();
     });
 
+    // Observed 2026-10-09/10: the owner's yes on a suggestion left the card pending with nothing on
+    // screen. The route had answered 500 (the write broke) and this card had no `catch`, so the
+    // rejection vanished and the next poll drew the same card. Every way a yes can fail to land is
+    // said now; none of them is silence.
+    it("a yes the server could not write says why, and leaves the card answerable again", async () => {
+      answerApproval.mockResolvedValueOnce({
+        ok: true,
+        outcome: "failed",
+        detail: "PermissionError: The process cannot access the file",
+      });
+      mountWithToasts();
+      await userEvent.click(screen.getByRole("button", { name: /allow this once/i }));
+      expect(
+        await screen.findByText(/could not be written \(PermissionError: The process cannot access the file\)/i),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /allow this once/i })).toBeEnabled();
+    });
+
+    it("a yes that never got an answer from the app says so instead of nothing", async () => {
+      answerApproval.mockRejectedValueOnce(new Error("Internal Server Error"));
+      mountWithToasts();
+      await userEvent.click(screen.getByRole("button", { name: /allow this once/i }));
+      expect(await screen.findByText(/your answer was not recorded \(Internal Server Error\)/i)).toBeInTheDocument();
+    });
+
+    it("a yes on a suggestion that is no longer waiting says where it went", async () => {
+      answerApproval.mockResolvedValueOnce({ ok: false, outcome: "no_such_request", detail: "" });
+      mountWithToasts();
+      await userEvent.click(screen.getByRole("button", { name: /allow this once/i }));
+      expect(await screen.findByText(/no longer waiting/i)).toBeInTheDocument();
+    });
+
+    it("an outcome this screen has no sentence for is still said, never dropped", async () => {
+      answerApproval.mockResolvedValueOnce({ ok: false, outcome: "needs_code", detail: "x" });
+      mountWithToasts();
+      await userEvent.click(screen.getByRole("button", { name: /allow this once/i }));
+      expect(await screen.findByText(/not applied \(needs_code\)/i)).toBeInTheDocument();
+    });
+
+    it("an ordinary question whose answer never got through says so too", async () => {
+      answerApproval.mockRejectedValueOnce(new Error("Failed to fetch"));
+      mountWithToasts(question);
+      await userEvent.click(screen.getByRole("button", { name: /allow this once/i }));
+      expect(await screen.findByText(/your answer was not recorded \(Failed to fetch\)/i)).toBeInTheDocument();
+    });
+
     it("an ordinary question's answer never raises a settings notice", async () => {
       answerApproval.mockResolvedValueOnce({ ok: true, outcome: "applied", detail: "X" });
       mountWithToasts(question);

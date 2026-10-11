@@ -174,8 +174,19 @@ function suggestionNotice(
       return { message: t("code.approval.suggestion.expired"), tone: "bad" };
     case "changed":
       return { message: t("code.approval.suggestion.changed"), tone: "bad" };
-    default:
+    case "failed":
+      return { message: t("code.approval.suggestion.failed", { detail: answer.detail ?? "" }), tone: "bad" };
+    case "no_such_request":
+      return { message: t("code.approval.suggestion.gone"), tone: "bad" };
+    case "refused":
       return null;
+    default:
+      // An outcome this screen has no sentence for is still not "applied". Said with its name,
+      // rather than dropped: a silent card after a yes is the exact failure this notice exists for.
+      return {
+        message: t("code.approval.suggestion.notApplied", { outcome: answer.outcome ?? String(answer.ok) }),
+        tone: "bad",
+      };
   }
 }
 
@@ -245,9 +256,20 @@ export function ApprovalCard({
   const answer = async (approved: boolean) => {
     setBusy(true);
     try {
-      const answered = suggestion
-        ? await answerApproval(question.id, approved, suggestion.digest)
-        : await answerApproval(question.id, approved);
+      let answered: ApprovalAnswer;
+      try {
+        answered = suggestion
+          ? await answerApproval(question.id, approved, suggestion.digest)
+          : await answerApproval(question.id, approved);
+      } catch (error) {
+        // The answer never got a reply: the app answered 500, or the connection dropped. Before
+        // this the rejection went nowhere, the next poll drew the same card again, and a person
+        // who had pressed "allow" saw nothing happen (2026-10-09/10, a settings suggestion). The
+        // question is still waiting — the poll keeps the card — and now it says why.
+        const detail = error instanceof Error ? error.message : String(error);
+        toast(t("code.approval.answerFailed", { detail }), "bad");
+        return;
+      }
       const notice = suggestion ? suggestionNotice(answered, t) : null;
       if (notice) toast(notice.message, notice.tone);
       // A question another process asked (a terminal run, a separate scheduler) cannot be approved

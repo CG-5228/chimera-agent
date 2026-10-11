@@ -283,11 +283,15 @@ def probe_real_clock(home: Path) -> list[dict[str, Any]]:
         # but kept computing the gap from `asked_at + REAL_ANSWER_DELAY`, so an answerer thread
         # that woke late under load still counted its own lateness as the mechanism's latency
         # (the suite tripped on it twice in four full runs on 2026-10-06, both on a busy machine).
-        answered_at = q.asked_at + float(recorded)
+        # None when the wait ran out before the answer was written: on a starved machine the
+        # answerer thread can wake more than REAL_WAIT late (seen once on a CI Windows runner,
+        # 2026-10-10). That run measured no gap, and it is recorded as such instead of crashing the
+        # probe on `float(None)`, which hid what had happened behind a TypeError.
+        gap = None if recorded is None else round(returned - (q.asked_at + float(recorded)), 4)
         rows.append({
             "run": index,
             "outcome": "approved" if outcome else "timeout",
-            "gap_seconds": round(returned - answered_at, 4),
+            "gap_seconds": gap,
             "seconds_to_answer_recorded": recorded,
             "effect_ran": bool(effects),
             "wall_seconds": round(returned - started, 4),
@@ -333,7 +337,7 @@ def main() -> None:
 
     # The registered summary numbers, computed here and printed — the reading lives in RESULTS.md.
     gaps = [p["gap"] for p in results["sync_grid"] + results["sync_grid_fast_poll"] if p["gap"] is not None]
-    real_gaps = [r["gap_seconds"] for r in results["real_clock"]]
+    real_gaps = [r["gap_seconds"] for r in results["real_clock"] if r["gap_seconds"] is not None]
     violations = sum(
         1 for p in results["boundaries"]
         if p["outcome"] == "timeout" and p["delta"] < WAIT_SECONDS

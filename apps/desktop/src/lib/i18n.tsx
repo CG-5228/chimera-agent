@@ -802,6 +802,8 @@ const en: Dict = {
   "settings.row.botToken": "{platform} bot token",
   "settings.hint.botToken": "so the agent can reach you on {platform}",
   "settings.row.botRun": "Run the {platform} bot",
+  "settings.messaging.pairing":
+    "Waiting for its owner: send {code} to the bot in a direct message. The first person who sends it becomes the only one it answers. The code expires 10 minutes after the bot starts.",
   "settings.hint.botRun": "connect the bot now (and at app start)",
   "settings.messaging.note":
     "Set a bot token first, then turn it on — the bot connects while the app is open.",
@@ -1303,6 +1305,10 @@ const en: Dict = {
   "code.approval.suggestion.invalid": "Not applied: the value no longer passes the settings checks ({detail}). Nothing was written.",
   "code.approval.suggestion.expired": "Not applied: the suggestion expired. Nothing was written.",
   "code.approval.suggestion.changed": "Not applied: the card changed after it was shown to you. Nothing was written; look at it again.",
+  "code.approval.suggestion.failed": "Not applied: the settings could not be written ({detail}). Nothing changed; the card is still waiting, so you can approve it again.",
+  "code.approval.suggestion.gone": "This suggestion is no longer waiting: it was answered elsewhere or expired. Nothing was written here.",
+  "code.approval.suggestion.notApplied": "Not applied ({outcome}). Nothing was written.",
+  "code.approval.answerFailed": "Your answer was not recorded ({detail}). The question is still waiting; try again.",
   "code.approval.needsCode": "Not approved: another Chimera process asked this question, and only that process holds its code. Approve it from a terminal with {command}, using the code from the message that asked.",
   "code.approval.level.block": "Blocked",
   "code.approval.level.review": "Needs review",
@@ -1423,6 +1429,7 @@ const en: Dict = {
   "code.open": "Open",
   "code.noFile": "no file open",
   "code.viewerHint": "Pick a file from the tree to view it here.",
+  "code.showWhole": "Show all ({n} characters)",
   "code.truncated": "truncated",
   "code.fileError": "Couldn't read that file.",
   "code.binaryNote": "Binary or non-text file — not shown.",
@@ -3046,6 +3053,8 @@ const pt: Dict = {
   "settings.row.botToken": "Token do bot do {platform}",
   "settings.hint.botToken": "para o agente te alcançar no {platform}",
   "settings.row.botRun": "Rodar o bot do {platform}",
+  "settings.messaging.pairing":
+    "Aguardando o dono: envie {code} ao bot por mensagem direta. A primeira pessoa que enviar passa a ser a única a quem ele responde. O código vale por 10 minutos depois que o bot liga.",
   "settings.hint.botRun": "conectar o bot agora (e ao iniciar o app)",
   "settings.messaging.note":
     "Defina um token de bot primeiro, depois ative — o bot conecta enquanto o app está aberto.",
@@ -3553,6 +3562,10 @@ const pt: Dict = {
   "code.approval.suggestion.invalid": "Não aplicada: o valor não passa mais nas verificações das configurações ({detail}). Nada foi gravado.",
   "code.approval.suggestion.expired": "Não aplicada: a sugestão expirou. Nada foi gravado.",
   "code.approval.suggestion.changed": "Não aplicada: o cartão mudou depois de ser mostrado a você. Nada foi gravado; confira de novo.",
+  "code.approval.suggestion.failed": "Não aplicada: não foi possível gravar as configurações ({detail}). Nada mudou; o cartão continua esperando, então você pode aprovar de novo.",
+  "code.approval.suggestion.gone": "Esta sugestão não está mais esperando: foi respondida em outro lugar ou expirou. Nada foi gravado aqui.",
+  "code.approval.suggestion.notApplied": "Não aplicada ({outcome}). Nada foi gravado.",
+  "code.approval.answerFailed": "Sua resposta não foi registrada ({detail}). A pergunta continua esperando; tente de novo.",
   "code.approval.needsCode": "Não aprovada: outro processo do Chimera fez esta pergunta, e só ele tem o código dela. Aprove de um terminal com {command}, usando o código da mensagem que perguntou.",
   "code.approval.level.block": "Bloqueado",
   "code.approval.level.review": "Precisa de revisão",
@@ -3673,6 +3686,7 @@ const pt: Dict = {
   "code.open": "Abrir",
   "code.noFile": "nenhum arquivo aberto",
   "code.viewerHint": "Escolha um arquivo na árvore para vê-lo aqui.",
+  "code.showWhole": "Mostrar tudo ({n} caracteres)",
   "code.truncated": "truncado",
   "code.fileError": "Não foi possível ler esse arquivo.",
   "code.binaryNote": "Arquivo binário ou não textual — não exibido.",
@@ -4578,6 +4592,8 @@ const es: Dict = {
   "settings.hint.botToken":
     "para que el agente pueda contactarte en {platform}",
   "settings.row.botRun": "Ejecutar el bot de {platform}",
+  "settings.messaging.pairing":
+    "Esperando a su dueño: envía {code} al bot por mensaje directo. La primera persona que lo envíe será la única a la que responda. El código caduca 10 minutos después de que el bot arranque.",
   "settings.hint.botRun": "conecta el bot ahora (y al iniciar la app)",
   "settings.messaging.note":
     "Primero pon un token de bot y luego actívalo — el bot se conecta mientras la app está abierta.",
@@ -5815,6 +5831,10 @@ const es: Dict = {
   "code.approval.suggestion.invalid": "No aplicado: el valor ya no pasa las comprobaciones de ajustes ({detail}). No se escribió nada.",
   "code.approval.suggestion.expired": "No aplicado: la sugerencia caducó. No se escribió nada.",
   "code.approval.suggestion.changed": "No aplicado: la tarjeta cambió después de mostrártela. No se escribió nada; vuelve a mirarla.",
+  "code.approval.suggestion.failed": "No aplicado: no se pudieron escribir los ajustes ({detail}). No cambió nada; la tarjeta sigue esperando, así que puedes aprobarla de nuevo.",
+  "code.approval.suggestion.gone": "Esta sugerencia ya no está esperando: se respondió en otro lugar o caducó. Aquí no se escribió nada.",
+  "code.approval.suggestion.notApplied": "No aplicado ({outcome}). No se escribió nada.",
+  "code.approval.answerFailed": "Tu respuesta no se registró ({detail}). La pregunta sigue esperando; inténtalo de nuevo.",
   "code.approval.needsCode": "No aprobada: otro proceso de Chimera hizo esta pregunta, y solo ese proceso tiene su código. Apruébala desde una terminal con {command}, usando el código del mensaje que preguntó.",
   "code.approval.level.block": "Bloqueado",
   "code.approval.level.review": "Requiere revisión",
@@ -5935,6 +5955,7 @@ const es: Dict = {
   "code.open": "Abrir",
   "code.noFile": "ningún archivo abierto",
   "code.viewerHint": "Elige un archivo del árbol para verlo aquí.",
+  "code.showWhole": "Mostrar todo ({n} caracteres)",
   "code.truncated": "truncado",
   "code.fileError": "No se pudo leer ese archivo.",
   "code.binaryNote": "Archivo binario o no textual — no se muestra.",
@@ -6844,6 +6865,8 @@ const fr: Dict = {
   "settings.hint.botToken":
     "pour que l'agent puisse vous joindre sur {platform}",
   "settings.row.botRun": "Lancer le bot {platform}",
+  "settings.messaging.pairing":
+    "En attente de son propriétaire : envoyez {code} au bot en message privé. La première personne qui l'envoie devient la seule à qui il répond. Le code expire 10 minutes après le démarrage du bot.",
   "settings.hint.botRun":
     "connecter le bot maintenant (et au démarrage de l'app)",
   "settings.messaging.note":
@@ -8088,6 +8111,10 @@ const fr: Dict = {
   "code.approval.suggestion.invalid": "Non appliquée : la valeur ne passe plus les vérifications des réglages ({detail}). Rien n'a été écrit.",
   "code.approval.suggestion.expired": "Non appliquée : la suggestion a expiré. Rien n'a été écrit.",
   "code.approval.suggestion.changed": "Non appliquée : la carte a changé après vous avoir été montrée. Rien n'a été écrit ; regardez-la à nouveau.",
+  "code.approval.suggestion.failed": "Non appliquée : les réglages n'ont pas pu être écrits ({detail}). Rien n'a changé ; la carte attend toujours, vous pouvez l'approuver à nouveau.",
+  "code.approval.suggestion.gone": "Cette suggestion n'attend plus : elle a reçu une réponse ailleurs ou a expiré. Rien n'a été écrit ici.",
+  "code.approval.suggestion.notApplied": "Non appliquée ({outcome}). Rien n'a été écrit.",
+  "code.approval.answerFailed": "Votre réponse n'a pas été enregistrée ({detail}). La question attend toujours ; réessayez.",
   "code.approval.needsCode": "Non approuvée : un autre processus Chimera a posé cette question, et lui seul en détient le code. Approuvez-la depuis un terminal avec {command}, avec le code du message qui l'a posée.",
   "code.approval.level.block": "Bloqué",
   "code.approval.level.review": "À examiner",
@@ -8211,6 +8238,7 @@ const fr: Dict = {
   "code.noFile": "aucun fichier ouvert",
   "code.viewerHint":
     "Choisissez un fichier dans l'arborescence pour l'afficher ici.",
+  "code.showWhole": "Tout afficher ({n} caractères)",
   "code.truncated": "tronqué",
   "code.fileError": "Impossible de lire ce fichier.",
   "code.binaryNote": "Fichier binaire ou non textuel — non affiché.",
@@ -9124,6 +9152,8 @@ const de: Dict = {
   "settings.hint.botToken":
     "damit dich der Agent auf {platform} erreichen kann",
   "settings.row.botRun": "{platform}-Bot starten",
+  "settings.messaging.pairing":
+    "Wartet auf seinen Besitzer: Sende {code} per Direktnachricht an den Bot. Wer ihn zuerst sendet, ist danach der Einzige, dem er antwortet. Der Code verfällt 10 Minuten nach dem Start des Bots.",
   "settings.hint.botRun": "den Bot jetzt verbinden (und beim App-Start)",
   "settings.messaging.note":
     "Zuerst ein Bot-Token setzen, dann einschalten — der Bot ist verbunden, solange die App offen ist.",
@@ -10364,6 +10394,10 @@ const de: Dict = {
   "code.approval.suggestion.invalid": "Nicht übernommen: Der Wert besteht die Prüfungen der Einstellungen nicht mehr ({detail}). Es wurde nichts geschrieben.",
   "code.approval.suggestion.expired": "Nicht übernommen: Der Vorschlag ist abgelaufen. Es wurde nichts geschrieben.",
   "code.approval.suggestion.changed": "Nicht übernommen: Die Karte hat sich geändert, nachdem sie dir angezeigt wurde. Es wurde nichts geschrieben; sieh sie dir erneut an.",
+  "code.approval.suggestion.failed": "Nicht übernommen: Die Einstellungen konnten nicht geschrieben werden ({detail}). Nichts hat sich geändert; die Karte wartet weiter, du kannst sie erneut genehmigen.",
+  "code.approval.suggestion.gone": "Dieser Vorschlag wartet nicht mehr: Er wurde anderswo beantwortet oder ist abgelaufen. Hier wurde nichts geschrieben.",
+  "code.approval.suggestion.notApplied": "Nicht übernommen ({outcome}). Es wurde nichts geschrieben.",
+  "code.approval.answerFailed": "Deine Antwort wurde nicht erfasst ({detail}). Die Frage wartet weiter; versuche es erneut.",
   "code.approval.needsCode": "Nicht genehmigt: Ein anderer Chimera-Prozess hat diese Frage gestellt, und nur er kennt ihren Code. Genehmige sie in einem Terminal mit {command}, mit dem Code aus der Nachricht, die gefragt hat.",
   "code.approval.level.block": "Blockiert",
   "code.approval.level.review": "Prüfung nötig",
@@ -10487,6 +10521,7 @@ const de: Dict = {
   "code.open": "Öffnen",
   "code.noFile": "keine Datei geöffnet",
   "code.viewerHint": "Wähle eine Datei im Baum, um sie hier anzuzeigen.",
+  "code.showWhole": "Alles anzeigen ({n} Zeichen)",
   "code.truncated": "gekürzt",
   "code.fileError": "Diese Datei konnte nicht gelesen werden.",
   "code.binaryNote": "Binär- oder Nicht-Textdatei — nicht angezeigt.",
@@ -11398,6 +11433,8 @@ const zh: Dict = {
   "settings.row.botToken": "{platform} 机器人令牌",
   "settings.hint.botToken": "这样智能体就能在 {platform} 上找到你",
   "settings.row.botRun": "运行 {platform} 机器人",
+  "settings.messaging.pairing":
+    "等待所有者：通过私信把 {code} 发给机器人。第一个发送的人将成为它唯一回复的人。代码在机器人启动 10 分钟后失效。",
   "settings.hint.botRun": "现在连接机器人（以及应用启动时）",
   "settings.messaging.note":
     "先设置机器人令牌，再打开开关——应用开着时机器人保持连接。",
@@ -12589,6 +12626,10 @@ const zh: Dict = {
   "code.approval.suggestion.invalid": "未应用：该值已无法通过设置检查（{detail}）。没有写入任何内容。",
   "code.approval.suggestion.expired": "未应用：建议已过期。没有写入任何内容。",
   "code.approval.suggestion.changed": "未应用：卡片在显示给你之后发生了变化。没有写入任何内容；请重新查看。",
+  "code.approval.suggestion.failed": "未应用：无法写入设置（{detail}）。没有任何更改；卡片仍在等待，你可以再次批准。",
+  "code.approval.suggestion.gone": "此建议已不再等待：它已在其他地方得到答复或已过期。此处没有写入任何内容。",
+  "code.approval.suggestion.notApplied": "未应用（{outcome}）。没有写入任何内容。",
+  "code.approval.answerFailed": "你的回答未被记录（{detail}）。问题仍在等待；请重试。",
   "code.approval.needsCode": "未批准：这个问题由另一个 Chimera 进程提出，只有它持有该问题的代码。请在终端中用 {command} 批准，并使用提问消息中的代码。",
   "code.approval.level.block": "已阻止",
   "code.approval.level.review": "需要审查",
@@ -12708,6 +12749,7 @@ const zh: Dict = {
   "code.open": "打开",
   "code.noFile": "未打开文件",
   "code.viewerHint": "从文件树中选择一个文件在此查看。",
+  "code.showWhole": "显示全部（{n} 个字符）",
   "code.truncated": "已截断",
   "code.fileError": "无法读取该文件。",
   "code.binaryNote": "二进制或非文本文件 —— 不显示。",
@@ -13594,6 +13636,8 @@ const ja: Dict = {
   "settings.hint.botToken":
     "エージェントが {platform} であなたに連絡できるようにします",
   "settings.row.botRun": "{platform} ボットを実行",
+  "settings.messaging.pairing":
+    "所有者を待っています：ボットにダイレクトメッセージで {code} を送ってください。最初に送った人だけにボットが応答するようになります。コードはボットの起動から10分で失効します。",
   "settings.hint.botRun": "今すぐボットを接続する（アプリ起動時にも）",
   "settings.messaging.note":
     "先にボットトークンを設定してから有効にしてください — ボットはアプリが開いている間だけ接続します。",
@@ -14818,6 +14862,10 @@ const ja: Dict = {
   "code.approval.suggestion.invalid": "適用されませんでした: 値が設定のチェックを通らなくなりました（{detail}）。何も書き込まれていません。",
   "code.approval.suggestion.expired": "適用されませんでした: 提案の期限が切れました。何も書き込まれていません。",
   "code.approval.suggestion.changed": "適用されませんでした: 表示された後でカードが変更されました。何も書き込まれていません。もう一度確認してください。",
+  "code.approval.suggestion.failed": "適用されませんでした：設定を書き込めませんでした（{detail}）。何も変更されていません。カードは待機中のままなので、もう一度承認できます。",
+  "code.approval.suggestion.gone": "この提案はもう待機していません：別の場所で回答されたか、期限切れになりました。ここでは何も書き込まれていません。",
+  "code.approval.suggestion.notApplied": "適用されませんでした（{outcome}）。何も書き込まれていません。",
+  "code.approval.answerFailed": "回答は記録されませんでした（{detail}）。質問はまだ待機中です。もう一度お試しください。",
   "code.approval.needsCode": "承認されませんでした: この質問は別の Chimera プロセスが出したもので、そのコードを持っているのはそのプロセスだけです。質問したメッセージのコードを使い、ターミナルで {command} を実行して承認してください。",
   "code.approval.level.block": "ブロック済み",
   "code.approval.level.review": "要確認",
@@ -14938,6 +14986,7 @@ const ja: Dict = {
   "code.open": "開く",
   "code.noFile": "開いているファイルなし",
   "code.viewerHint": "ツリーからファイルを選ぶとここに表示されます。",
+  "code.showWhole": "すべて表示（{n} 文字）",
   "code.truncated": "切り詰め",
   "code.fileError": "そのファイルを読み取れませんでした。",
   "code.binaryNote": "バイナリまたは非テキストファイル —— 表示しません。",
@@ -16574,6 +16623,8 @@ const it: Dict = {
   "settings.row.botToken": "Token del bot {platform}",
   "settings.hint.botToken": "così l'agente può raggiungerti su {platform}",
   "settings.row.botRun": "Avvia il bot {platform}",
+  "settings.messaging.pairing":
+    "In attesa del proprietario: invia {code} al bot in un messaggio diretto. La prima persona che lo invia diventa l'unica a cui risponde. Il codice scade 10 minuti dopo l'avvio del bot.",
   "settings.hint.botRun": "connetti il bot ora (e all'avvio dell'app)",
   "settings.messaging.note":
     "Imposta prima un token del bot, poi attivalo — il bot si connette mentre l'app è aperta.",
@@ -17086,6 +17137,10 @@ const it: Dict = {
   "code.approval.suggestion.invalid": "Non applicata: il valore non supera più i controlli delle impostazioni ({detail}). Non è stato scritto nulla.",
   "code.approval.suggestion.expired": "Non applicata: il suggerimento è scaduto. Non è stato scritto nulla.",
   "code.approval.suggestion.changed": "Non applicata: la scheda è cambiata dopo che ti è stata mostrata. Non è stato scritto nulla; ricontrollala.",
+  "code.approval.suggestion.failed": "Non applicata: non è stato possibile scrivere le impostazioni ({detail}). Non è cambiato nulla; la scheda è ancora in attesa, puoi approvarla di nuovo.",
+  "code.approval.suggestion.gone": "Questo suggerimento non è più in attesa: ha avuto risposta altrove o è scaduto. Qui non è stato scritto nulla.",
+  "code.approval.suggestion.notApplied": "Non applicata ({outcome}). Non è stato scritto nulla.",
+  "code.approval.answerFailed": "La tua risposta non è stata registrata ({detail}). La domanda è ancora in attesa; riprova.",
   "code.approval.needsCode": "Non approvata: un altro processo di Chimera ha posto questa domanda, e solo quel processo ne conosce il codice. Approvala da un terminale con {command}, usando il codice del messaggio che l'ha posta.",
   "code.approval.level.block": "Bloccato",
   "code.approval.level.review": "Da rivedere",
@@ -17207,6 +17262,7 @@ const it: Dict = {
   "code.open": "Apri",
   "code.noFile": "nessun file aperto",
   "code.viewerHint": "Scegli un file dall'albero per vederlo qui.",
+  "code.showWhole": "Mostra tutto ({n} caratteri)",
   "code.truncated": "troncato",
   "code.fileError": "Non è stato possibile leggere quel file.",
   "code.binaryNote": "File binario o non testuale — non mostrato.",
@@ -18844,6 +18900,8 @@ const pl: Dict = {
   "settings.hint.botToken":
     "żeby agent mógł się z tobą skontaktować przez {platform}",
   "settings.row.botRun": "Uruchom bota {platform}",
+  "settings.messaging.pairing":
+    "Czeka na właściciela: wyślij {code} do bota w wiadomości prywatnej. Pierwsza osoba, która go wyśle, stanie się jedyną, której bot odpowiada. Kod wygasa 10 minut po uruchomieniu bota.",
   "settings.hint.botRun": "połącz bota teraz (i przy starcie aplikacji)",
   "settings.messaging.note":
     "Najpierw ustaw token bota, potem go włącz — bot łączy się, gdy aplikacja jest otwarta.",
@@ -19351,6 +19409,10 @@ const pl: Dict = {
   "code.approval.suggestion.invalid": "Nie zastosowano: wartość nie przechodzi już kontroli ustawień ({detail}). Nic nie zostało zapisane.",
   "code.approval.suggestion.expired": "Nie zastosowano: sugestia wygasła. Nic nie zostało zapisane.",
   "code.approval.suggestion.changed": "Nie zastosowano: karta zmieniła się po tym, jak ją zobaczyłeś. Nic nie zostało zapisane; sprawdź ją ponownie.",
+  "code.approval.suggestion.failed": "Nie zastosowano: nie udało się zapisać ustawień ({detail}). Nic się nie zmieniło; karta nadal czeka, możesz ją zatwierdzić ponownie.",
+  "code.approval.suggestion.gone": "Ta sugestia już nie czeka: odpowiedziano na nią gdzie indziej albo wygasła. Nic tu nie zapisano.",
+  "code.approval.suggestion.notApplied": "Nie zastosowano ({outcome}). Nic nie zapisano.",
+  "code.approval.answerFailed": "Twoja odpowiedź nie została zapisana ({detail}). Pytanie nadal czeka; spróbuj ponownie.",
   "code.approval.needsCode": "Nie zatwierdzono: to pytanie zadał inny proces Chimery i tylko on zna jego kod. Zatwierdź je w terminalu poleceniem {command}, używając kodu z wiadomości, która o to pytała.",
   "code.approval.level.block": "Zablokowane",
   "code.approval.level.review": "Wymaga przeglądu",
@@ -19471,6 +19533,7 @@ const pl: Dict = {
   "code.open": "Otwórz",
   "code.noFile": "brak otwartego pliku",
   "code.viewerHint": "Wybierz plik z drzewa, żeby zobaczyć go tutaj.",
+  "code.showWhole": "Pokaż całość ({n} znaków)",
   "code.truncated": "przycięte",
   "code.fileError": "Nie udało się odczytać tego pliku.",
   "code.binaryNote": "Plik binarny albo nietekstowy — nie pokazano.",
@@ -21109,6 +21172,8 @@ const ru: Dict = {
   "settings.row.botToken": "Токен бота {platform}",
   "settings.hint.botToken": "чтобы агент мог связаться с вами в {platform}",
   "settings.row.botRun": "Запускать бота {platform}",
+  "settings.messaging.pairing":
+    "Ожидает владельца: отправьте {code} боту в личном сообщении. Первый, кто его отправит, станет единственным, кому бот отвечает. Код истекает через 10 минут после запуска бота.",
   "settings.hint.botRun": "подключить бота сейчас (и при старте приложения)",
   "settings.messaging.note":
     "Сначала задайте токен бота, потом включите его — бот подключён, пока приложение открыто.",
@@ -21617,6 +21682,10 @@ const ru: Dict = {
   "code.approval.suggestion.invalid": "Не применено: значение больше не проходит проверки настроек ({detail}). Ничего не записано.",
   "code.approval.suggestion.expired": "Не применено: срок предложения истёк. Ничего не записано.",
   "code.approval.suggestion.changed": "Не применено: карточка изменилась после того, как вам её показали. Ничего не записано; посмотрите её ещё раз.",
+  "code.approval.suggestion.failed": "Не применено: не удалось записать настройки ({detail}). Ничего не изменилось; карточка по-прежнему ждёт, можно одобрить её ещё раз.",
+  "code.approval.suggestion.gone": "Это предложение больше не ждёт: на него ответили в другом месте или срок истёк. Здесь ничего не записано.",
+  "code.approval.suggestion.notApplied": "Не применено ({outcome}). Ничего не записано.",
+  "code.approval.answerFailed": "Ваш ответ не был записан ({detail}). Вопрос по-прежнему ждёт; попробуйте ещё раз.",
   "code.approval.needsCode": "Не одобрено: этот вопрос задал другой процесс Chimera, и только он знает его код. Одобрите его в терминале командой {command}, используя код из сообщения с вопросом.",
   "code.approval.level.block": "Заблокировано",
   "code.approval.level.review": "Нужна проверка",
@@ -21737,6 +21806,7 @@ const ru: Dict = {
   "code.open": "Открыть",
   "code.noFile": "файл не открыт",
   "code.viewerHint": "Выберите файл в дереве, чтобы посмотреть его здесь.",
+  "code.showWhole": "Показать всё ({n} символов)",
   "code.truncated": "обрезано",
   "code.fileError": "Не удалось прочитать этот файл.",
   "code.binaryNote": "Двоичный или нетекстовый файл — не показан.",

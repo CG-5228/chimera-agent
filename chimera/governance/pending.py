@@ -266,6 +266,18 @@ def pending(home: Path) -> list[PendingApproval]:
     return sorted(out, key=lambda p: (level_rank(p.decision), p.asked_at))
 
 
+def is_waiting(home: Path, request_id: str) -> bool:
+    """Whether ``request_id`` is still waiting for an answer — its question file is there.
+
+    The file is written before a question is announced and removed once it resolves (answered, or
+    refused by silence), so it is the one record that knows; a stream that announced a question
+    never says when it ended. An id that could name anything but a file in the queue is not waiting.
+    """
+    if not request_id or any(ch in request_id for ch in "/\\.:") or len(request_id) > 64:
+        return False
+    return (_dir(home) / f"{request_id}.ask.json").exists()
+
+
 def answer(
     home: Path, request_id: str, approved: bool, *, via: str = "", code: str | None = None
 ) -> bool:
@@ -851,6 +863,7 @@ def _record(
     answered_via: str = "",
     approver_kind: str = "",
     audit: Any = None,
+    result: str = "",
 ) -> None:
     resolved_at = time.time()
     line: dict[str, Any] = {
@@ -876,6 +889,10 @@ def _record(
         # that said whether a person was ever part of it, so a rubber-stamped night and a careful
         # one read identically. Empty when the caller did not say — never guessed.
         **({"approver_kind": approver_kind[:40]} if approver_kind else {}),
+        # What the answer led to, where that differs by more than yes or no: a settings suggestion
+        # the owner approved can still be `stale` or `invalid` and write nothing. `outcome` keeps
+        # the shared vocabulary every reader of this file knows; this says what happened after it.
+        **({"result": result[:40]} if result else {}),
     }
     # The number and what it was read against, merged under whatever the caller named in `facts` —
     # so a caller that passes them either way lands the same column. `p` is written only when there

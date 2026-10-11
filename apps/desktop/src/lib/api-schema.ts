@@ -249,6 +249,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/bridge/jobs/{job_id}/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bridge Job Stop
+         * @description Stop the coding turn a ``conversations.send`` job started — running, or queued for its folder.
+         *
+         *     The app could always stop a turn (`POST /api/code/turns/{id}/stop`, the operate tier), but a
+         *     client of the bridge had to know that route and dig the turn id out of the job, and a turn
+         *     queued behind another in the same folder looked like one that hung (plan M1). Stopping only
+         *     narrows, so the operate tier is enough. A refusal says why, never a 200 that stopped nothing.
+         */
+        post: operations["bridge_job_stop_api_bridge_jobs__job_id__stop_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/bridge/status": {
         parameters: {
             query?: never;
@@ -4801,6 +4826,11 @@ export interface components {
             /** Elapsed Seconds */
             elapsed_seconds: number;
             /**
+             * Ended
+             * @default false
+             */
+            ended: boolean;
+            /**
              * Error
              * @default
              */
@@ -4827,8 +4857,24 @@ export interface components {
             text: string;
             /** Turn Id */
             turn_id: string;
+            /** Turn Running */
+            turn_running?: boolean | null;
             /** Waiting For Approval */
             waiting_for_approval: boolean;
+            /**
+             * Waiting For Folder
+             * @default false
+             */
+            waiting_for_folder: boolean;
+        };
+        /** BridgeJobStopOut */
+        BridgeJobStopOut: {
+            /** Job Id */
+            job_id: string;
+            /** Stopping */
+            stopping: boolean;
+            /** Turn Id */
+            turn_id: string;
         };
         /** BridgeStatusOut */
         BridgeStatusOut: {
@@ -7046,6 +7092,8 @@ export interface components {
             note: string;
             /** Path */
             path: string;
+            /** Total Chars */
+            total_chars?: number | null;
             /** Truncated */
             truncated: boolean;
         };
@@ -8384,6 +8432,18 @@ export interface components {
             configured: boolean;
             /** Error */
             error?: string | null;
+            /**
+             * Open
+             * @default false
+             */
+            open: boolean;
+            /**
+             * Pairing
+             * @default false
+             */
+            pairing: boolean;
+            /** Pairing Code */
+            pairing_code?: string | null;
             /** Running */
             running: boolean;
         };
@@ -11070,6 +11130,37 @@ export interface operations {
             };
         };
     };
+    bridge_job_stop_api_bridge_jobs__job_id__stop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BridgeJobStopOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     bridge_status_api_bridge_status_get: {
         parameters: {
             query?: never;
@@ -13334,6 +13425,7 @@ export interface operations {
             query: {
                 path: string;
                 workspace?: string | null;
+                max_chars?: number | null;
             };
             header?: never;
             path?: never;

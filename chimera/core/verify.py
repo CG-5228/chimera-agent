@@ -299,6 +299,13 @@ class CommandVerifier:
         if isinstance(resolved, VerificationResult):
             return resolved
         sandbox = resolved
+        from chimera.sandbox.docker import docker_refusal
+
+        if docker_refusal(sandbox) is not None:
+            # Docker was chosen and is not there, so nothing ran (plan M8). That is no verdict on
+            # the work: failing it would revert a change because a daemon was down. Checked before
+            # the host-exec question, which would otherwise ask about a run that cannot happen.
+            return self._abstain("the docker sandbox is selected and Docker is not reachable")
         if self._declined(sandbox):
             # Recorded as a log line rather than an audit entry: the verifier is built outside the
             # tool registry, so no audit hook reaches it. The abstention itself goes on the receipt.

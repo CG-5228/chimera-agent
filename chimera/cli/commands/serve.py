@@ -546,7 +546,11 @@ def desktop_app(
     # manager runs each adapter in a background thread (the app already owns the main thread for the
     # HTTP server). Auto-start configured platforms at boot only when CHIMERA_APP_MESSAGING is on.
     from chimera.server import MessagingManager
+    from chimera.server.allowlist import remember_existing_bots
 
+    # Before anything can configure a bot: a bot the owner had before this record existed keeps
+    # answering as it did, and one configured from now on starts by pairing (plan M7).
+    remember_existing_bots(settings)
     messaging = MessagingManager(
         settings=settings,
         backend=backend,

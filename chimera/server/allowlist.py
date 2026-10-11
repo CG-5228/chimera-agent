@@ -168,10 +168,16 @@ def is_new_install(
     ``home_was_empty`` is :func:`home_is_empty` taken at process start; without it the home is
     read now, which is only right when nothing has written to it yet.
     """
+    if _allowlist_key_written(platform):
+        return False
+    return home_is_empty(settings) if home_was_empty is None else home_was_empty
+
+
+def _allowlist_key_written(platform: str) -> bool:
+    """Whether the owner wrote ``platform``'s allowlist variable at all, even empty."""
     _attr, env_name = ALLOWLIST_FIELDS[platform]
     if env_name in os.environ:
-        return False
-
+        return True
     configured_env_file = Settings.model_config.get("env_file") or ".env"
     env_files = (
         (configured_env_file,) if isinstance(configured_env_file, (str, Path)) else configured_env_file
@@ -181,11 +187,55 @@ def is_new_install(
             for line in Path(env_file).read_text(encoding="utf-8").splitlines():
                 candidate = line.partition("=")[0].strip().removeprefix("export ").strip()
                 if candidate == env_name:
-                    return False
+                    return True
         except OSError:
             continue
+    return False
 
-    return home_is_empty(settings) if home_was_empty is None else home_was_empty
+
+#: Which bots the desktop app found already configured the first time it ran with this file.
+_APP_BOTS_FILE = "app-bots-known.json"
+
+
+def remember_existing_bots(settings: Settings) -> None:
+    """Record, once per home, the bots already configured, so an upgrade keeps how they answer.
+
+    The app starts a bot long after its data folder has filled up, so `is_new_install`'s "empty
+    home" test read every bot the app started as an upgrade, and each one started OPEN (plan M7,
+    found 2026-10-10). This file is the app's own answer: a bot configured before it existed is an
+    existing bot and keeps answering as it did; one configured after is new and starts by pairing.
+    Written at app start, before the owner can configure anything; never rewritten.
+    """
+    path = Path(settings.home).expanduser() / _APP_BOTS_FILE
+    if path.exists():
+        return
+    existing = [platform for platform in CONNECTION_FIELDS if bot_configured(settings, platform)]
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_suffix(".tmp")
+        temporary.write_text(json.dumps({"existing": existing}), encoding="utf-8")
+        temporary.replace(path)
+    except OSError:
+        return
+
+
+def app_bot_is_new(settings: Settings, platform: str) -> bool:
+    """Whether the app should start ``platform``'s bot by pairing rather than open.
+
+    Not new when the owner wrote its allowlist variable (even empty: an explicit "anyone"), when it
+    was configured before :func:`remember_existing_bots` first ran, or when that record cannot be
+    read: unknown keeps the old behaviour rather than silencing a bot someone relies on.
+    """
+    if _allowlist_key_written(platform):
+        return False
+    try:
+        data = json.loads(
+            (Path(settings.home).expanduser() / _APP_BOTS_FILE).read_text(encoding="utf-8")
+        )
+        existing = data.get("existing", [])
+    except (OSError, ValueError, AttributeError):
+        return False
+    return isinstance(existing, list) and platform not in existing
 
 
 class PairingFlow:
@@ -219,6 +269,13 @@ class PairingFlow:
                 self._listed_users = True
         except (OSError, ValueError, AttributeError):
             pass
+
+    def pending_code(self) -> str | None:
+        """The code while it can still be claimed (unused, unexpired, not locked), else None."""
+        with self._lock:
+            if self._listed_users or self._used or self._locked or self._clock() >= self._expires:
+                return None
+            return self.code
 
     def authorize(self, user: str, text: str) -> bool:
         """Return true for known users; consume valid pairing codes without routing them."""

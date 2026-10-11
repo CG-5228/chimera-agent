@@ -9,22 +9,50 @@ gVisor interposes a userspace kernel that intercepts the container's syscalls, s
 the host-kernel attack surface a plain ``runc`` container leaves exposed — a drop-in step
 below a full microVM. Default is empty (the daemon's default runtime, ``runc``).
 
-When Docker is not available it degrades gracefully to a :class:`LocalSandbox`, so the
-agent keeps working (just without container isolation) instead of failing outright.
+When Docker is not available the command is refused with the reason, and nothing runs. It used to
+degrade to a :class:`LocalSandbox` with a warning in the log: the person who chose a container got
+their commands run on their own computer and saw nothing say so (plan M8, observed 2026-10-10). A
+caller that wants the host in that case passes ``fallback=`` explicitly; choosing
+``CHIMERA_SANDBOX=local`` is the setting for that.
 """
 
 from __future__ import annotations
 
 import subprocess
+import time
 from contextlib import suppress
 from pathlib import Path
 
 from chimera.proc.decode import console_text
 from chimera.sandbox.base import Sandbox, SandboxResult
-from chimera.sandbox.local import _NONINTERACTIVE_ENV, LocalSandbox
+from chimera.sandbox.local import _NONINTERACTIVE_ENV
 from chimera.telemetry import get_logger
 
 _log = get_logger("sandbox.docker")
+
+#: What a command gets when the docker sandbox was chosen and no daemon answers. Said to the model
+#: and, through it, to the person: what happened, that nothing ran, and the two ways out.
+DOCKER_UNAVAILABLE = (
+    "error: the docker sandbox is selected (CHIMERA_SANDBOX=docker) but Docker is not reachable, "
+    "so the command was refused and nothing ran on this computer. Start Docker and try again, or "
+    "set CHIMERA_SANDBOX=local to run commands on this computer instead."
+)
+#: How long a "Docker is not reachable" answer is trusted before the daemon is asked again.
+RECHECK_SECONDS = 30.0
+#: 125 is what `docker run` itself exits with when the daemon cannot run the container.
+DOCKER_UNAVAILABLE_EXIT = 125
+
+
+def docker_refusal(sandbox: object) -> str | None:
+    """:data:`DOCKER_UNAVAILABLE` when ``sandbox`` is a docker sandbox that would refuse right now.
+
+    For the callers that ask the person before running on the host: a refused command never runs
+    anywhere, so asking "run this on your computer?" first would be a question about something that
+    is not going to happen. They check this before the question and return the refusal instead.
+    """
+    if isinstance(sandbox, DockerSandbox) and sandbox.fallback is None and not sandbox.available():
+        return DOCKER_UNAVAILABLE
+    return None
 
 
 class DockerSandbox:
@@ -46,21 +74,39 @@ class DockerSandbox:
         self.pids_limit = pids_limit
         # Optional OCI runtime (e.g. "runsc" for gVisor); empty/None uses the daemon default.
         self.runtime = (runtime or "").strip() or None
-        self.fallback: Sandbox = fallback or LocalSandbox()
+        # None unless a caller asked for one: without it, a missing daemon refuses rather than
+        # running the command on the host.
+        self.fallback: Sandbox | None = fallback
         self._available: bool | None = None
+        self._checked_at = 0.0
 
     def is_isolated(self) -> bool:
-        """Isolated only when Docker is actually reachable; otherwise this falls back to the host."""
+        """Isolated only when Docker is actually reachable.
+
+        Not True for a missing daemon even though nothing then runs: this answer feeds the host-exec
+        gate and the posture screen, and "isolated" there must mean a container exists.
+        """
         return self.available()
 
     def available(self) -> bool:
-        """Whether the Docker CLI/daemon is reachable (checked once, then cached)."""
-        if self._available is None:
+        """Whether the Docker CLI/daemon is reachable.
+
+        A "yes" is kept for good. A "no" is asked again after :data:`RECHECK_SECONDS`: now that a
+        missing daemon refuses commands instead of running them on the host, a long-lived app whose
+        owner starts Docker after the first refusal must not keep refusing until it restarts.
+        """
+        stale = (
+            self._available is False
+            and self._checked_at > 0
+            and time.monotonic() - self._checked_at > RECHECK_SECONDS
+        )
+        if self._available is None or stale:
             try:
                 proc = subprocess.run(["docker", "version"], capture_output=True, timeout=10)
                 self._available = proc.returncode == 0
             except (FileNotFoundError, OSError, subprocess.SubprocessError):
                 self._available = False
+            self._checked_at = time.monotonic()
         return self._available
 
     def _argv(self, name: str, command: str, workdir: Path, env_args: list[str]) -> list[str]:
@@ -98,8 +144,11 @@ class DockerSandbox:
 
     def run(self, command: str, *, timeout: int = 60, cwd: Path | None = None) -> SandboxResult:
         if not self.available():
-            _log.warning("docker unavailable; falling back to the local sandbox")
-            return self.fallback.run(command, timeout=timeout, cwd=cwd)
+            if self.fallback is not None:
+                _log.warning("docker unavailable; running in the fallback sandbox the caller gave")
+                return self.fallback.run(command, timeout=timeout, cwd=cwd)
+            _log.warning("docker unavailable; command refused, nothing ran")
+            return SandboxResult(exit_code=DOCKER_UNAVAILABLE_EXIT, stderr=DOCKER_UNAVAILABLE)
 
         workdir = (Path(cwd) if cwd else Path.cwd()).resolve()
         # No `-i`/`-t`: the container's stdin stays closed (a read gets EOF, never hangs) and there

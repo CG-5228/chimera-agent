@@ -1799,6 +1799,12 @@ class MessagingPlatformOut(BaseModel):
     configured: bool
     running: bool
     error: str | None = None
+    #: While a new bot waits for its owner: the code to send it in a direct message. Never through
+    #: the desktop bridge, which gets only ``pairing``: that a code is pending.
+    pairing_code: str | None = None
+    pairing: bool = False
+    #: Running with no allowlist and no pairing: anyone who can message it gets a turn.
+    open: bool = False
 
 
 #: Why no kernel boundary applies. The OS causes come from `chimera.sandbox.os_sandbox`;
@@ -2402,7 +2408,8 @@ class ApprovalAnswerOut(BaseModel):
     outcome: str | None = None
     """For a settings suggestion: ``applied`` | ``refused`` | ``stale`` (a key no longer holds
     the value the card showed) | ``changed`` (the card's file changed after it was shown) |
-    ``invalid`` (the value fails a check now) | ``expired``. Only
+    ``invalid`` (the value fails a check now) | ``expired`` | ``failed`` (reading or writing the
+    settings broke; the card stays waiting and ``detail`` says what broke). Only
     ``applied`` wrote anything. For any other question it is absent, except ``needs_code``: an
     approval of a question another process asked, which this app cannot vouch for — ``detail`` is
     then the ``chimera approve`` line that approves it with the code the owner was sent."""
@@ -2650,6 +2657,8 @@ class FsFileOut(BaseModel):
     #: (study 29, P6.3) — never editable, since saving it would replace the document with its text.
     #: Empty for every other file.
     document: str = ""
+    #: The whole text's length, so a viewer can offer what the cap left out. None when nothing was read.
+    total_chars: int | None = None
 
 
 class FsFileWrittenOut(BaseModel):

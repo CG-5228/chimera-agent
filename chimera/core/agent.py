@@ -19,6 +19,7 @@ import math
 import threading
 import time
 import uuid
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -146,6 +147,23 @@ _ASSUME_NUDGE = (
     "reasonable reading, state it in one line at the top of your answer, and then do the task with "
     "your tools."
 )
+
+
+#: Sent when a step's only tool calls were dropped by the provider layer because their arguments
+#: did not parse — usually a call cut off at the output limit (`CompletionResult.dropped_tool_calls`).
+#:
+#: Before this the step read as a final answer: what was left was the text BEFORE the call, often
+#: "I will now write the report", and the turn ended there, with the agent saying it would continue
+#: and not continuing (observed 2026-10-09/10 through the desktop bridge: RAG stopped after 5 steps
+#: and one search, interaction after its first search, both receipts `dropped_tool_calls: 1`; plan
+#: M19). The model never learned its call had not run.
+_DROPPED_CALL_NUDGE = (
+    "Your last message ended with {n} tool call(s) whose arguments could not be read{cut}, so "
+    "nothing ran. If you still mean to make that call, make it again with complete arguments; if "
+    "its content is long, split it into smaller calls (for example, write a file in parts)."
+)
+#: Per run: a model that keeps producing calls that cannot be read is not helped by a third ask.
+_MAX_DROPPED_CALL_RETRIES = 2
 
 
 #: Asked once when a closing call — the step limit, the loop breaker — came back with no text.
@@ -1285,6 +1303,7 @@ class Agent:
         steplog.system_sha = fingerprint(system_prompt)
         wire_scope, _ = wire_context.current()
         nudged = False
+        dropped_retries = 0
         loop_detector = self._new_loop_detector() if self.config.detect_tool_loops else None
         #: Tools already warned about this run, and the correction waiting for the end of the step.
         warned_loops: set[str] = set()
@@ -1458,6 +1477,8 @@ class Agent:
                 and result.prompt_tokens
                 and budget.should_compact(result.prompt_tokens)
             ):
+                # The run's own count, restored after the history that held it is gone (M2).
+                self.run_state.tool_calls = dict(Counter(tool_names))
                 messages, compacted = compact(
                     messages,
                     keep_recent=self.config.keep_recent,
@@ -1500,6 +1521,24 @@ class Agent:
                     # then, in the words the receipt renderer uses for this stop.
                     contexto_travado = (result.content or "").strip() or _CONTEXT_STUCK_ANSWER
                     break
+            dropped_now = int(getattr(result, "dropped_tool_calls", 0) or 0)
+            if not result.tool_calls and dropped_now and dropped_retries < _MAX_DROPPED_CALL_RETRIES:
+                # Every call this step made was dropped, so what is left reads as an answer and is
+                # not one. Said to the model, and to whoever follows the turn (plan M19).
+                dropped_retries += 1
+                why_cut = " because the reply hit its length limit" if result.truncated else ""
+                messages.append(
+                    {"role": "assistant", "content": result.content or "(tool call not readable)"}
+                )
+                messages.append(
+                    {"role": "user", "content": _DROPPED_CALL_NUDGE.format(n=dropped_now, cut=why_cut)}
+                )
+                _notice(
+                    on_notice, "dropped_tool_call",
+                    "a tool call could not be read and did not run; the agent was asked to retry",
+                    dropped=dropped_now, retry=dropped_retries,
+                )
+                continue
             if not result.tool_calls:
                 # Narrate-instead-of-act guard: if asked to insist on action, push a described-but-
                 # unexecuted plan back once instead of accepting it as done. Only once, so a genuine

@@ -66,9 +66,10 @@ _log = get_logger("governance.setting_suggestions")
 #: back to the app, and a yes given after that is a yes to a suggestion nobody remembers making.
 TTL_SECONDS = 24 * 3600.0
 
-#: How a suggestion ends. Only ``applied`` wrote anything.
+#: How a suggestion ends. Only ``applied`` wrote anything. ``changed`` and ``failed`` do not end
+#: it: the card stays waiting, and the screen says why the yes did not land.
 Outcome = Literal[
-    "applied", "refused", "stale", "changed", "invalid", "expired", "no_such_request"
+    "applied", "refused", "stale", "changed", "invalid", "expired", "failed", "no_such_request"
 ]
 
 #: One resolution at a time in this process: two clicks on the same card (two windows) must not
@@ -225,7 +226,20 @@ def is_suggestion(home: Path, request_id: str) -> bool:
     return read(home, request_id) is not None
 
 
-def _end(home: Path, s: Suggestion, outcome: str, answered_at: float | None, via: str) -> None:
+def _end(
+    home: Path,
+    s: Suggestion,
+    outcome: str,
+    answered_at: float | None,
+    via: str,
+    result: str = "",
+) -> None:
+    """Close the card in the shared history. ``result`` says what an approval led to.
+
+    Every approved card was recorded as ``approved``, including the ones that wrote nothing because
+    the setting had moved (``stale``) or was no longer suggestable (``invalid``). The history could
+    not tell "approved and applied" from "approved and not applied" (found 2026-10-10, M4).
+    """
     _record(
         _dir(home),
         s.id,
@@ -236,6 +250,7 @@ def _end(home: Path, s: Suggestion, outcome: str, answered_at: float | None, via
         answered_at,
         facts={"surface": s.suggested_by or "desktop_bridge", "tool": "settings.edit"},
         answered_via=via,
+        result=result,
     )
     with contextlib.suppress(OSError):
         _ask_path(home, s.id).unlink(missing_ok=True)
@@ -293,6 +308,8 @@ def resolve(
     A refusal writes nothing. A yes writes the proposed values only if the card has not expired,
     every key is still suggestable, every key still holds the value the card showed, and the update
     passes every check a save would make — otherwise it writes nothing and says which of those it was.
+    A reading or a write that breaks (anything but the ``ValueError`` of a check) is ``failed``,
+    with what broke, and the card stays waiting: an answer the owner gave is never lost in silence.
     """
     agora = time.time() if now is None else now
     with _LOCK:
@@ -312,20 +329,39 @@ def resolve(
         updates = {c.key: c.proposed for c in s.changes}
         not_allowed = sorted(k for k in updates if not allowed(k))
         if not_allowed:
-            _end(home, s, "approved", agora, via)
+            _end(home, s, "approved", agora, via, "invalid")
             _log.warning("suggestion %s not applied: no longer suggestable: %s", s.id, not_allowed)
             return "invalid", f"no longer a setting that can be suggested: {', '.join(not_allowed)}"
-        moved = sorted(c.key for c in s.changes if current_of(c.key) != c.current)
-        if moved:
-            _end(home, s, "approved", agora, via)
-            _log.warning("suggestion %s not applied: changed since it was suggested: %s", s.id, moved)
-            return "stale", ", ".join(moved)
         try:
-            check(updates)
-            apply(updates)
-        except ValueError as exc:
-            _end(home, s, "approved", agora, via)
-            _log.warning("suggestion %s not applied: %s", s.id, exc)
-            return "invalid", str(exc)
-        _end(home, s, "approved", agora, via)
+            moved = sorted(c.key for c in s.changes if current_of(c.key) != c.current)
+            if moved:
+                _end(home, s, "approved", agora, via, "stale")
+                _log.warning(
+                    "suggestion %s not applied: changed since it was suggested: %s", s.id, moved
+                )
+                return "stale", ", ".join(moved)
+            try:
+                check(updates)
+                apply(updates)
+            except ValueError as exc:
+                _end(home, s, "approved", agora, via, "invalid")
+                _log.warning("suggestion %s not applied: %s", s.id, exc)
+                return "invalid", str(exc)
+        except Exception as exc:  # noqa: BLE001 — reported to the owner, never swallowed
+            # Not a refusal: the reading or the write itself broke (``.env`` held open by another
+            # reader on Windows, a full disk). Before this it escaped as a 500 that left the card
+            # waiting and the screen silent — the owner's yes vanished. Left waiting on purpose: the
+            # owner's next yes is a real retry, and if this one wrote part of the change, the
+            # retry finds those keys moved and ends the card as ``stale`` with their names.
+            _log.warning("suggestion %s not applied: %s", s.id, _failure(exc))
+            return "failed", _failure(exc)
+        _end(home, s, "approved", agora, via, "applied")
         return "applied", ", ".join(sorted(updates))
+
+
+def _failure(exc: BaseException) -> str:
+    """What broke, for the owner's screen: the exception's kind and the operating system's words
+    for an ``OSError`` — never its arguments, which could carry the value being written."""
+    if isinstance(exc, OSError) and exc.strerror:
+        return f"{type(exc).__name__}: {exc.strerror}"
+    return type(exc).__name__
