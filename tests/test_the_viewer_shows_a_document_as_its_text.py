@@ -39,6 +39,8 @@ def test_a_document_is_read_as_its_text_and_labelled_a_preview(
     assert out == {
         "path": "report.docx", "content": "# Relatório\n\nVendas subiram.", "truncated": False,
         "document": "docx", "note": "",
+        # How long the preview text is, so the viewer can offer what the cap left out.
+        "total_chars": 28,
     }
     assert seen == ["report.docx"]
     assert FsFileOut(**out).document == "docx"
