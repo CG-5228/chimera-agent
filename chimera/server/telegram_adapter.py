@@ -16,7 +16,9 @@ from collections.abc import Callable
 from functools import partial
 from typing import Any
 
+from chimera.api.attachments import MAX_BYTES
 from chimera.server.gateway import InboundMessage, chunk_text, run_with_indicator
+from chimera.server.inbound_media import MediaTooLarge, read_bounded, refusal_reply
 from chimera.telemetry import get_logger
 
 _log = get_logger("server.telegram")
@@ -145,16 +147,18 @@ class TelegramAdapter:
                 info = client.get(
                     self._url("getFile"), params={"file_id": inbound.media_file_id}
                 ).json()["result"]
-                media_resp = client.get(
-                    f"https://api.telegram.org/file/bot{self.token}/{info['file_path']}"
+                # Telegram reports the size: refused before a byte is fetched (plan M6).
+                if int(info.get("file_size") or 0) > MAX_BYTES:
+                    raise MediaTooLarge(f"declared {info.get('file_size')} bytes")
+                inbound.media_data = read_bounded(
+                    client, f"https://api.telegram.org/file/bot{self.token}/{info['file_path']}"
                 )
-                media_resp.raise_for_status()
-                inbound.media_data = media_resp.content
         except (KeyError, ValueError, httpx.HTTPError) as exc:
             # The type, never the text: an httpx error's message carries the request URL, and a
             # file URL has the bot token in its path.
             _log.warning("telegram media download failed: %s", type(exc).__name__)
             inbound.media_refusal = True
+            inbound.media_refusal_reply = refusal_reply(exc)
             inbound.media_kind = ""
 
     def _typing(self, client: Any, chat_id: str) -> None:

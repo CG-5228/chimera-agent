@@ -19,6 +19,7 @@ from urllib.parse import urlsplit
 
 from chimera.providers.failover import policy_block
 from chimera.server.gateway import InboundMessage
+from chimera.server.inbound_media import read_bounded, refusal_reply
 from chimera.telemetry import get_logger
 
 _log = get_logger("server.whatsapp")
@@ -205,11 +206,8 @@ class WhatsAppWebhook:
             url = str(meta.json().get("url", ""))
             if not _is_meta_media_url(url):
                 raise ValueError("media download URL is not on Meta's media host")
-            response = client.get(url, headers=headers)
-            response.raise_for_status()
-            if len(response.content) > _MEDIA_MAX_BYTES:
-                raise ValueError("inbound media exceeds the size limit")
-            return response.content
+            # Bounded while it downloads, not measured after (plan M6).
+            return read_bounded(client, url, headers=headers)
 
     def _attach_media(self, message: InboundMessage) -> None:
         """Download an attached voice note or image; when off or failed, mark it refused.
@@ -235,6 +233,7 @@ class WhatsAppWebhook:
             _log.warning("whatsapp media download failed: %s", type(exc).__name__)
             message.media_kind = ""
             message.media_refusal = True
+            message.media_refusal_reply = refusal_reply(exc)
 
     def on_message(self, payload: dict[str, Any]) -> int:
         """Handle an inbound webhook POST: route the message and reply. Returns count handled."""

@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from chimera.server.gateway import InboundMessage, chunk_text
+from chimera.server.inbound_media import MediaTooLarge, refusal_reply
 from chimera.telemetry import get_logger
 
 _log = get_logger("server.discord")
@@ -215,12 +216,13 @@ class DiscordAdapter:
                         # Checked before reading: Discord reports the size, and a 500 MB upload
                         # would otherwise be held in memory only to be refused afterwards.
                         if int(getattr(attachment, "size", 0) or 0) > _INBOUND_MEDIA_MAX_BYTES:
-                            raise ValueError("inbound media exceeds the size limit")
+                            raise MediaTooLarge("inbound media exceeds the size limit")
                         inbound.media_data = await attachment.read()
                 except Exception as exc:
                     _log.warning("discord media download failed: %s", exc)
                     inbound.media_kind = ""
                     inbound.media_refusal = True
+                    inbound.media_refusal_reply = refusal_reply(exc)
             # Show a typing indicator while the (synchronous) agent runs off the event loop, so a
             # slow turn does not block the gateway and the user sees it was received and is working.
             async def send_files(paths: list[Path]) -> None:

@@ -155,6 +155,9 @@ class InboundMessage:
     #: Inbound media has no user-authored trust guarantee, even when its transcript is fenced.
     tainted: bool = False
     media_refusal: bool = False
+    #: Why the media was not read, when the bot accepts media: too large, or a failed download.
+    #: Empty means media is off for this bot, the one case the old single reply was true for.
+    media_refusal_reply: str = ""
     media_kind: str = ""
     media_file_id: str = ""
     media_name: str = ""
@@ -311,7 +314,7 @@ class MessageGateway:
         its gateway, so it answers a refusal itself (``WhatsAppWebhook.on_message``).
         """
         if message.media_refusal:
-            return MEDIA_DISABLED_REPLY
+            return message.media_refusal_reply or MEDIA_DISABLED_REPLY
         if self._intercept is not None:
             # Before the chat's turn lock, not under it: an approval code answers a question that a
             # turn of THIS chat may be blocked on. Queued behind that turn, the answer could only
