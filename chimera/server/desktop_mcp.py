@@ -439,7 +439,13 @@ class DesktopMCP:
                 "WAITING FOR THE OWNER'S APPROVAL in the Chimera app. The run is paused on:"
             )
             for item in job.get("pending_approvals") or []:
-                head.append(f"  - {item.get('action', '')} ({item.get('reason', '')})")
+                line = f"  - {item.get('action', '')} ({item.get('reason', '')})"
+                left = item.get("seconds_left")
+                if isinstance(left, (int, float)):
+                    # Silence refuses it then. Without the number a question that disappeared from
+                    # this list read as answered when it had been refused for waiting too long.
+                    line += f" — refused by silence in {int(left)}s if nobody answers"
+                head.append(line)
             head.append(f"Check again with desktop_job job_id={job.get('job_id')}.")
         elif not job.get("done"):
             head.append(f"Still running. Check again with desktop_job job_id={job.get('job_id')}.")
