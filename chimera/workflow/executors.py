@@ -42,9 +42,13 @@ def build_executors(*, workspace: Path, model: str | None = None) -> dict[str, S
         """
         from chimera.sandbox import get_sandbox
         from chimera.sandbox.confirm import resolve_host_exec_confirm, sandbox_is_isolated
+        from chimera.sandbox.docker import docker_refusal
 
         command = str(step.with_.get("command", ""))
         sandbox = get_sandbox()
+        refused = docker_refusal(sandbox)
+        if refused is not None:
+            return StepResult(False, refused)
         confirm = resolve_host_exec_confirm()
         if confirm is not None and not sandbox_is_isolated(sandbox) and not confirm(command):
             return StepResult(False, "host execution declined (CHIMERA_HOST_EXEC). Not run.")

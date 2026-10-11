@@ -158,8 +158,9 @@ command the model chooses to run would otherwise execute on your machine. `CHIME
 default) confirms each host command in an interactive terminal; **headless (no TTY) it refuses**, since
 `ask` means a human decides and unattended there is nobody to ask. `allow` runs without asking (the
 explicit opt-in an unattended deployment that genuinely needs host execution should set); `deny`
-refuses outright. A docker sandbox that silently fell back to local (Docker absent) is treated as host
-execution and gated too, so "configured docker" never quietly becomes "ran on the host".
+refuses outright. A docker sandbox with no Docker running refuses the command and says so, and nothing
+runs (since 2026-10-10; it used to fall back to the host behind this same gate), so "configured docker"
+never quietly becomes "ran on the host".
 
 > Changed 2026-07-20 (was: headless proceeded after a one-time warning). That made the shipped default
 > effectively `allow` on every server/cron/CI surface — the place host execution matters most. If an
