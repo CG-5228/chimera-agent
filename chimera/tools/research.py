@@ -9,6 +9,8 @@ extra); it returns a helpful message when the library or a transcript is unavail
 from __future__ import annotations
 
 import re
+import threading
+import time
 from typing import Any
 from xml.etree import ElementTree
 
@@ -17,6 +19,42 @@ from chimera.tools.base import Tool
 _ARXIV_URL = "https://export.arxiv.org/api/query"
 _ATOM = "{http://www.w3.org/2005/Atom}"
 _MAX_OUTPUT_CHARS = 20_000
+#: arXiv asks API clients for no more than one request every three seconds. Five conversations
+#: searching at once sent five at once, and every one came back HTTP 429: 13 research areas, zero
+#: papers (2026-10-09, plan M16). One pace for the whole process, so conversations share it.
+_ARXIV_INTERVAL = 3.0
+_ARXIV_TRIES = 3
+#: The longest wait a Retry-After may impose; past it the search fails and says so.
+_ARXIV_MAX_RETRY_AFTER = 30.0
+#: Per abstract. It was 300 characters, which cut most abstracts before their result, and reports
+#: written from them said "no number in the abstract" for numbers that were there (plan M16).
+_ABSTRACT_CHARS = 2_000
+_arxiv_lock = threading.Lock()
+_arxiv_last = 0.0
+
+
+def _arxiv_get(params: dict[str, Any]) -> Any:
+    """GET the arXiv API at arXiv's pace, retrying a 429 or 503 a bounded number of times."""
+    import httpx  # lazy
+
+    global _arxiv_last
+    response: Any = None
+    for attempt in range(_ARXIV_TRIES):
+        with _arxiv_lock:
+            wait = _arxiv_last + _ARXIV_INTERVAL - time.monotonic()
+            if wait > 0:
+                time.sleep(wait)
+            response = httpx.get(_ARXIV_URL, params=params, timeout=30.0)
+            _arxiv_last = time.monotonic()
+        status = getattr(response, "status_code", 200)
+        if status not in (429, 503) or attempt == _ARXIV_TRIES - 1:
+            return response
+        delay = _ARXIV_INTERVAL * (attempt + 1)
+        header = str(getattr(response, "headers", {}).get("retry-after", "") or "")
+        if header.isdigit():
+            delay = min(float(header), _ARXIV_MAX_RETRY_AFTER)
+        time.sleep(delay)
+    return response
 _YOUTUBE_ID = re.compile(r"(?:v=|/shorts/|/embed/|youtu\.be/)([A-Za-z0-9_-]{11})")
 
 
@@ -46,11 +84,15 @@ class ArxivSearchTool(Tool):
         query = str(kwargs["query"])
         max_results = int(kwargs.get("max_results") or 5)
         try:
-            response = httpx.get(
-                _ARXIV_URL,
-                params={"search_query": f"all:{query}", "start": 0, "max_results": max_results},
-                timeout=30.0,
+            response = _arxiv_get(
+                {"search_query": f"all:{query}", "start": 0, "max_results": max_results}
             )
+            if getattr(response, "status_code", 200) in (429, 503):
+                return (
+                    f"error: arxiv search failed: HTTP {response.status_code} after "
+                    f"{_ARXIV_TRIES} tries (arXiv allows one request every "
+                    f"{_ARXIV_INTERVAL:g} seconds); try again in a minute"
+                )
             response.raise_for_status()
             root = ElementTree.fromstring(response.text)
         except (httpx.HTTPError, ElementTree.ParseError) as exc:
@@ -65,8 +107,12 @@ class ArxivSearchTool(Tool):
             authors = ", ".join(
                 (a.findtext(f"{_ATOM}name") or "").strip() for a in entry.findall(f"{_ATOM}author")
             )
-            summary = (entry.findtext(f"{_ATOM}summary") or "").strip().replace("\n", " ")[:300]
-            lines.append(f"- {title}\n  {authors}\n  {link}\n  {summary}")
+            summary = " ".join((entry.findtext(f"{_ATOM}summary") or "").split())
+            if len(summary) > _ABSTRACT_CHARS:
+                summary = f"{summary[:_ABSTRACT_CHARS]}... [abstract cut at {_ABSTRACT_CHARS} of {len(summary)} chars]"
+            year = (entry.findtext(f"{_ATOM}published") or "")[:4]
+            dated = f" ({year})" if year.isdigit() else ""
+            lines.append(f"- {title}{dated}\n  {authors}\n  {link}\n  {summary}")
         return f"Top {len(entries)} arXiv results for {query!r}:\n" + "\n".join(lines)
 
 
