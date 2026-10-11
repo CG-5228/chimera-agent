@@ -140,6 +140,31 @@ describe("Code — the file viewer", () => {
     expect(screen.queryByRole("button", { name: /^Edit$/ })).not.toBeInTheDocument();
   });
 
+  // A long file showed its first 20,000 characters, a "truncated" badge, and no way to read on.
+  it("offers the rest of a truncated file and loads it whole when asked", async () => {
+    const user = await openFile(fsFile({ truncated: true, total_chars: 54321 }));
+
+    const more = await screen.findByRole("button", {
+      name: `Show all (${new Intl.NumberFormat("en").format(54321)} characters)`,
+    });
+    vi.mocked(getFsFile).mockResolvedValue(
+      fsFile({ content: "print('all of it')\n", truncated: false, total_chars: 19 }),
+    );
+    await user.click(more);
+
+    await waitFor(() =>
+      expect(vi.mocked(getFsFile)).toHaveBeenLastCalledWith(null, "src/app.py", 1_000_000),
+    );
+    expect(await screen.findByText(/all of it/)).toBeInTheDocument();
+    expect(screen.queryByText("truncated")).not.toBeInTheDocument();
+  });
+
+  it("does not offer the rest of a file that is already whole", async () => {
+    await openFile(fsFile({ total_chars: 12 }));
+    expect(await screen.findByRole("button", { name: /^Edit$/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Show all/ })).not.toBeInTheDocument();
+  });
+
   it("does not offer to edit a binary file, and says why it isn't shown", async () => {
     await openFile(fsFile({ note: "binary", content: "" }));
 

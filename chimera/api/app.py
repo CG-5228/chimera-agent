@@ -2102,15 +2102,19 @@ def build_api_app(
             raise HTTPException(status_code=400, detail="invalid path") from exc
 
     @app.get("/api/fs/file", dependencies=[guard], response_model=FsFileOut)
-    def fs_file_endpoint(path: str, workspace: str | None = None) -> dict[str, Any]:
-        # Read-only single-file read (path-guarded, capped at 20k). Binary/dir/missing → an honest
-        # note, never a 500; only a path escape is a 400.
-        from chimera.api.fs_api import read_file
+    def fs_file_endpoint(
+        path: str, workspace: str | None = None, max_chars: int | None = None
+    ) -> dict[str, Any]:
+        # Read-only single-file read (path-guarded, capped at 20k unless the viewer asks for more,
+        # up to MAX_VIEW_CHARS). Binary/dir/missing → an honest note, never a 500; only a path
+        # escape is a 400.
+        from chimera.api.fs_api import _MAX_READ_CHARS, MAX_VIEW_CHARS, read_file
         from chimera.tools.workspace import PathEscapesWorkspaceError
 
         ws = _resolve_fs_workspace(workspace)
+        cap = _MAX_READ_CHARS if max_chars is None else max(1, min(max_chars, MAX_VIEW_CHARS))
         try:
-            return read_file(ws, path)
+            return read_file(ws, path, cap)
         except PathEscapesWorkspaceError as exc:
             raise HTTPException(status_code=400, detail="invalid path") from exc
 

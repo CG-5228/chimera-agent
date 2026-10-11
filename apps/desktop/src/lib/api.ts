@@ -341,9 +341,14 @@ export const getFsTree = (workspace?: string | null, path = "") => {
   if (workspace) params.set("workspace", workspace);
   return json<FsTree>(`/api/fs/tree?${params.toString()}`);
 };
-export const getFsFile = (workspace: string | null | undefined, path: string) => {
+export const getFsFile = (
+  workspace: string | null | undefined,
+  path: string,
+  maxChars?: number,
+) => {
   const params = new URLSearchParams({ path });
   if (workspace) params.set("workspace", workspace);
+  if (maxChars) params.set("max_chars", String(maxChars));
   return json<FsFile>(`/api/fs/file?${params.toString()}`);
 };
 // Editable-viewer save (PUT): atomic + newline-preserving + size-capped server-side. A `..` escape or

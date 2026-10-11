@@ -6456,6 +6456,17 @@
             "title": "Path",
             "type": "string"
           },
+          "total_chars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Chars"
+          },
           "truncated": {
             "title": "Truncated",
             "type": "boolean"
@@ -17480,6 +17491,22 @@
                 }
               ],
               "title": "Workspace"
+            }
+          },
+          {
+            "in": "query",
+            "name": "max_chars",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Chars"
             }
           }
         ],

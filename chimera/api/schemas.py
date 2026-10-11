@@ -2657,6 +2657,8 @@ class FsFileOut(BaseModel):
     #: (study 29, P6.3) — never editable, since saving it would replace the document with its text.
     #: Empty for every other file.
     document: str = ""
+    #: The whole text's length, so a viewer can offer what the cap left out. None when nothing was read.
+    total_chars: int | None = None
 
 
 class FsFileWrittenOut(BaseModel):
