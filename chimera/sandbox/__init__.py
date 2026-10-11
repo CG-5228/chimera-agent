@@ -5,8 +5,8 @@
   default**, via ``auto``.
 * :class:`LocalSandbox` — runs on the host (timeout + working dir). What ``auto`` falls back to
   where no kernel sandbox is available, and what ``local`` selects deliberately.
-* :class:`DockerSandbox` — runs in an ephemeral, network-isolated container, with a
-  graceful fallback to local when Docker is absent.
+* :class:`DockerSandbox` — runs in an ephemeral, network-isolated container. When Docker is absent
+  the command is refused with the reason, and nothing runs on the host.
 
 Select the backend with ``CHIMERA_SANDBOX=auto|os|local|docker`` (image via
 ``CHIMERA_SANDBOX_IMAGE``, hardened OCI runtime via ``CHIMERA_SANDBOX_RUNTIME=runsc``

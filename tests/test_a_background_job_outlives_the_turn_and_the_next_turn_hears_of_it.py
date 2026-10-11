@@ -139,12 +139,18 @@ def test_without_a_job_store_the_parameter_is_refused_with_a_sentence(tmp_path: 
     assert "foreground" in out
 
 
-def test_a_container_sandbox_refuses_a_background_job(tmp_path: Path) -> None:
+def test_a_container_sandbox_refuses_a_background_job(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from chimera.sandbox.docker import DockerSandbox
 
     ws = tmp_path / "ws"
     ws.mkdir()
-    tool = RunShellTool(ws, DockerSandbox(), confirm=None, jobs=JobRegistry(tmp_path / "home"))
+    sandbox = DockerSandbox()
+    # A daemon that is up: without one the command is refused before this question (plan M8), and
+    # this test would pass or fail with the machine it runs on.
+    monkeypatch.setattr(sandbox, "available", lambda: True)
+    tool = RunShellTool(ws, sandbox, confirm=None, jobs=JobRegistry(tmp_path / "home"))
     out = tool.run(command="echo hi", background=True)
     assert out.startswith("error: background jobs run on the host sandbox only")
     assert not (tmp_path / "home" / "jobs").exists() or not list(
