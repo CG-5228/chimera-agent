@@ -1,0 +1,1 @@
+Your last message ended with {n} tool call(s) whose arguments could not be read{cut}, so nothing ran. If you still mean to make that call, make it again with complete arguments; if its content is long, split it into smaller calls (for example, write a file in parts).

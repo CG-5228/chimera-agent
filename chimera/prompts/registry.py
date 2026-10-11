@@ -189,6 +189,11 @@ SECTIONS: tuple[PromptSection, ...] = (
             "Also sent alone (AgentConfig.assume_on_questions) on every scheduled run, study 28 P3"),
     _c("loop.action_nudge", "chimera.core.agent:_ACTION_NUDGE", "turn", ("S1",), "measured",
        "bench/swe_bench/RESULTS.md measured the trigger (empty patches), not this wording"),
+    _c("loop.dropped_call_nudge", "chimera.core.agent:_DROPPED_CALL_NUDGE", "turn", _LOOP,
+       "unmeasured",
+       note="sent when every tool call of a step was dropped as unreadable, at most twice per run; "
+            "plan M19. The failure was observed (2 research turns ended early, receipts "
+            "dropped_tool_calls: 1), the sentence's effect is not measured"),
     _i("loop.stop_nudge", "chimera.core.agent:Agent.run", "turn", _LOOP, "measured",
        "bench/tool_loop_fix measured the breaker; the sentence itself is unmeasured"),
     _i("loop.final_nudge", "chimera.core.agent:Agent.run", "turn", _LOOP),
