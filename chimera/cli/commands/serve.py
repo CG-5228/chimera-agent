@@ -785,7 +785,7 @@ def desktop_app(
 
     # Warnings and errors to disk as well (plan M5). The app starts this process as a child, so its
     # console is read by nobody, and a turn that failed for a reason no sentence names left no trace.
-    from chimera.telemetry import attach_file_log
+    from chimera.file_log import attach_file_log
 
     attach_file_log(Path(settings.home).expanduser() / "logs" / "backend.log")
 

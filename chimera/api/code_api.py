@@ -488,7 +488,7 @@ def _unnamed_failure(exc: Exception) -> str:
     log anywhere to read (plan M5). The exception's class is not internal text, a timeout and a lost
     connection are worth saying in words, and the log file holds the traceback.
     """
-    from chimera.telemetry import file_log_path
+    from chimera.file_log import file_log_path
 
     kind = type(exc).__name__
     lowered = f"{kind} {exc}".lower()
