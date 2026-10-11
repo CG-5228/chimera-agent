@@ -424,6 +424,29 @@ def _structural_note(older: list[MessageLike]) -> str:
 _SUMMARY_PREFIX = "[earlier conversation, compacted]"
 _RESTORED_PREFIX = "[context restored after compaction — the conversation above was compacted]"
 _REQUEST_MARKER = "Latest user request (verbatim):\n"
+_TASK_MARKER = "The task you were given:\n"
+
+
+def is_compaction_note(content: object) -> bool:
+    """Whether a user-role message is one this module wrote, not one a person typed.
+
+    Both the compacted span and the restored block are sent as user messages, so anything that reads
+    "the first user message" as the person's words reads them instead once a conversation has
+    compacted: the Code screen titled such conversations "[earlier conversation, compacted] 26
+    earlier messages were removed..." (seen 2026-10-11, after the 0.65.0 visual check).
+    """
+    return isinstance(content, str) and (
+        content.startswith(_SUMMARY_PREFIX) or content.startswith(_RESTORED_PREFIX)
+    )
+
+
+def restored_task(content: object) -> str:
+    """The task a restored block carries, verbatim up to its first blank line; "" when it has none."""
+    if not isinstance(content, str) or not content.startswith(_RESTORED_PREFIX):
+        return ""
+    if _TASK_MARKER not in content:
+        return ""
+    return content.split(_TASK_MARKER, 1)[1].split("\n\n", 1)[0].strip()
 
 
 def _latest_request(body: list[MessageLike]) -> str:

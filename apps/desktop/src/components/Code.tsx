@@ -302,18 +302,14 @@ function Viewer({
     >
       <div className={cn("flex items-center gap-2 px-4 py-2.5", !minimized && "border-b border-hairline")}>
         <FileCode2 className="h-4 w-4 shrink-0 text-accent" />
-        <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground">
+        <span
+          className="min-w-0 flex-1 truncate font-mono text-xs text-foreground"
+          title={path ?? undefined}
+        >
           {path ?? t("code.noFile")}
         </span>
         {dirty ? <Badge tone="warn">{t("code.dirty")}</Badge> : null}
         {q.data?.truncated ? <Badge tone="warn">{t("code.truncated")}</Badge> : null}
-        {q.data?.truncated && !whole && q.data.total_chars ? (
-          <Button size="sm" variant="outline" onClick={() => setWhole(true)}>
-            {t("code.showWhole", {
-              n: num(Math.min(q.data.total_chars, VIEW_ALL_CHARS)),
-            })}
-          </Button>
-        ) : null}
         {savedFlash && !editing ? (
           <span className="text-xs text-ok-foreground">{t("code.saved")}</span>
         ) : null}
@@ -365,6 +361,17 @@ function Viewer({
           ) : null}
         </div>
       </div>
+      {/* On its own row, not in the header: beside the badge and the panel's controls it squeezed
+          the file name to its first letters in a narrow viewer (0.65.0 visual check). */}
+      {!minimized && q.data?.truncated && !whole && q.data.total_chars ? (
+        <div className="flex justify-end border-b border-hairline px-4 py-1.5">
+          <Button size="sm" variant="outline" onClick={() => setWhole(true)}>
+            {t("code.showWhole", {
+              n: num(Math.min(q.data.total_chars, VIEW_ALL_CHARS)),
+            })}
+          </Button>
+        </div>
+      ) : null}
       {/* Minimised, the header is the whole pane. The editor stays mounted behind it, so a draft
           survives being put away and brought back. */}
       {minimized ? null : editing ? (
