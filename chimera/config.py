@@ -146,7 +146,7 @@ _DEFAULT_TRANSFER_PANEL = [
     "openrouter/mistralai/mistral-small-3.2-24b-instruct",
     "openrouter/moonshotai/kimi-k2",
     "openrouter/openai/gpt-5.6-luna",
-    "openrouter/qwen/qwen3-max",
+    "openrouter/qwen/qwen3.7-max",
     "openrouter/qwen/qwen3-coder",
     "openrouter/z-ai/glm-4.6",
 ]

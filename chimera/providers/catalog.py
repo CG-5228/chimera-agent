@@ -283,9 +283,11 @@ CATALOG: tuple[CatalogEntry, ...] = (
         notes="frontier; replaces claude-opus-4-8, withdrawn on 2026-08-18. Cache read 0.50 and write 6.25 as the OpenRouter index publishes them for this slug (input_cache_read / input_cache_write, read 2026-10-05) — Anthropic's 0.1x / 1.25x of input, confirmed at the source rather than applied here",
     ),
     CatalogEntry(
-        "openrouter/qwen/qwen3-max", "top", "Qwen (Alibaba)",
-        0.78, 3.90, tools=True, context_k=262,
-        notes="replaces qwen-max, withdrawn on 2026-08-18",
+        "openrouter/qwen/qwen3.7-max", "top", "Qwen (Alibaba)",
+        1.475, 4.425, tools=True, context_k=1000,
+        notes="replaces qwen3-max, withdrawn by OpenRouter around 2026-10-10 (the live catalogue check "
+        "failed on main from then); price and context as the OpenRouter index publishes them, read "
+        "2026-10-11. qwen3-max replaced qwen-max, withdrawn on 2026-08-18",
     ),
 )
 
