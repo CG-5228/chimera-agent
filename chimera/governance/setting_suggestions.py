@@ -226,7 +226,20 @@ def is_suggestion(home: Path, request_id: str) -> bool:
     return read(home, request_id) is not None
 
 
-def _end(home: Path, s: Suggestion, outcome: str, answered_at: float | None, via: str) -> None:
+def _end(
+    home: Path,
+    s: Suggestion,
+    outcome: str,
+    answered_at: float | None,
+    via: str,
+    result: str = "",
+) -> None:
+    """Close the card in the shared history. ``result`` says what an approval led to.
+
+    Every approved card was recorded as ``approved``, including the ones that wrote nothing because
+    the setting had moved (``stale``) or was no longer suggestable (``invalid``). The history could
+    not tell "approved and applied" from "approved and not applied" (found 2026-10-10, M4).
+    """
     _record(
         _dir(home),
         s.id,
@@ -237,6 +250,7 @@ def _end(home: Path, s: Suggestion, outcome: str, answered_at: float | None, via
         answered_at,
         facts={"surface": s.suggested_by or "desktop_bridge", "tool": "settings.edit"},
         answered_via=via,
+        result=result,
     )
     with contextlib.suppress(OSError):
         _ask_path(home, s.id).unlink(missing_ok=True)
@@ -315,13 +329,13 @@ def resolve(
         updates = {c.key: c.proposed for c in s.changes}
         not_allowed = sorted(k for k in updates if not allowed(k))
         if not_allowed:
-            _end(home, s, "approved", agora, via)
+            _end(home, s, "approved", agora, via, "invalid")
             _log.warning("suggestion %s not applied: no longer suggestable: %s", s.id, not_allowed)
             return "invalid", f"no longer a setting that can be suggested: {', '.join(not_allowed)}"
         try:
             moved = sorted(c.key for c in s.changes if current_of(c.key) != c.current)
             if moved:
-                _end(home, s, "approved", agora, via)
+                _end(home, s, "approved", agora, via, "stale")
                 _log.warning(
                     "suggestion %s not applied: changed since it was suggested: %s", s.id, moved
                 )
@@ -330,7 +344,7 @@ def resolve(
                 check(updates)
                 apply(updates)
             except ValueError as exc:
-                _end(home, s, "approved", agora, via)
+                _end(home, s, "approved", agora, via, "invalid")
                 _log.warning("suggestion %s not applied: %s", s.id, exc)
                 return "invalid", str(exc)
         except Exception as exc:  # noqa: BLE001 — reported to the owner, never swallowed
@@ -341,7 +355,7 @@ def resolve(
             # retry finds those keys moved and ends the card as ``stale`` with their names.
             _log.warning("suggestion %s not applied: %s", s.id, _failure(exc))
             return "failed", _failure(exc)
-        _end(home, s, "approved", agora, via)
+        _end(home, s, "approved", agora, via, "applied")
         return "applied", ", ".join(sorted(updates))
 
 

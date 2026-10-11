@@ -863,6 +863,7 @@ def _record(
     answered_via: str = "",
     approver_kind: str = "",
     audit: Any = None,
+    result: str = "",
 ) -> None:
     resolved_at = time.time()
     line: dict[str, Any] = {
@@ -888,6 +889,10 @@ def _record(
         # that said whether a person was ever part of it, so a rubber-stamped night and a careful
         # one read identically. Empty when the caller did not say — never guessed.
         **({"approver_kind": approver_kind[:40]} if approver_kind else {}),
+        # What the answer led to, where that differs by more than yes or no: a settings suggestion
+        # the owner approved can still be `stale` or `invalid` and write nothing. `outcome` keeps
+        # the shared vocabulary every reader of this file knows; this says what happened after it.
+        **({"result": result[:40]} if result else {}),
     }
     # The number and what it was read against, merged under whatever the caller named in `facts` —
     # so a caller that passes them either way lands the same column. `p` is written only when there

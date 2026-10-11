@@ -143,3 +143,49 @@ def test_a_reading_of_the_current_value_that_fails_says_so_too(
     assert outcome == "failed" and "OSError" in detail
     assert written == []
     assert setting_suggestions.is_suggestion(home, request_id)
+
+
+# The history recorded every approved card as `approved`, including the ones that wrote nothing
+# because the setting had moved (`stale`) or was no longer suggestable (`invalid`): it could not
+# tell "approved and applied" from "approved and not applied" (noted in #852). `outcome` keeps the
+# shared vocabulary; `result` says what the yes led to.
+def test_the_history_says_an_approved_suggestion_was_applied(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _app(tmp_path, monkeypatch)
+    with TestClient(app) as client:
+        request_id = _suggest(client, app)
+        assert _yes(client, tmp_path, request_id).status_code == 200
+    row = [r for r in history(tmp_path / "home") if r["id"] == request_id][-1]
+    assert row["outcome"] == "approved" and row["result"] == "applied"
+
+
+def test_the_history_says_an_approved_suggestion_that_went_stale_wrote_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _app(tmp_path, monkeypatch)
+    with TestClient(app) as client:
+        request_id = _suggest(client, app)
+        # Someone changed the setting after the card was raised: the yes was given to a change
+        # from a value that is no longer there.
+        monkeypatch.setenv(KEY, "openrouter/vendor/someone-else")
+        get_settings.cache_clear()
+        _yes(client, tmp_path, request_id)
+    row = [r for r in history(tmp_path / "home") if r["id"] == request_id][-1]
+    assert row["outcome"] == "approved" and row["result"] == "stale"
+
+
+def test_a_refused_suggestion_carries_no_result(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app = _app(tmp_path, monkeypatch)
+    with TestClient(app) as client:
+        request_id = _suggest(client, app)
+        s = setting_suggestions.read(tmp_path / "home", request_id)
+        assert s is not None
+        client.post(
+            f"/api/approvals/{request_id}",
+            json={"approved": False, "digest": setting_suggestions.digest(s)},
+        )
+    row = [r for r in history(tmp_path / "home") if r["id"] == request_id][-1]
+    assert row["outcome"] == "refused" and "result" not in row
