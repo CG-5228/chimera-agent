@@ -35,6 +35,15 @@ class Tool(ABC):
     through a wrapper chain so a wrapper that forgets cannot quietly disarm the defence.
     """
 
+    open_arguments: bool = False
+    """Whether a name absent from ``parameters`` is still the tool's to judge.
+
+    False for our own tools: their schema is the whole contract, and ``run`` reads only the names it
+    knows, so anything else was silently dropped (see :func:`undeclared_arguments`). True for a proxy
+    that forwards its arguments verbatim to a validator of its own — an MCP server — where JSON
+    Schema's default applies and an unlisted name is allowed unless the schema says otherwise.
+    Resolved through the ``.inner`` chain, like ``untrusted_output``, so a wrapper need not copy it.
+    """
 
     @abstractmethod
     def run(self, **kwargs: Any) -> str:
@@ -71,6 +80,66 @@ def is_untrusted_output(tool: Any) -> bool:
         current = getattr(current, "inner", None)
         seen += 1
     return False
+
+
+def _chain_has_open_arguments(tool: Any) -> bool:
+    seen = 0
+    current = tool
+    while current is not None and seen < 16:  # bounded, as in `is_untrusted_output`
+        if bool(getattr(current, "open_arguments", False)):
+            return True
+        current = getattr(current, "inner", None)
+        seen += 1
+    return False
+
+
+def undeclared_arguments(tool: Any, arguments: dict[str, Any]) -> list[str]:
+    """The names in ``arguments`` that ``tool``'s schema does not declare, in call order.
+
+    Empty when the schema is free-form by its own words: ``additionalProperties`` true or a schema,
+    ``patternProperties``, or no (or an empty) ``properties`` list. With ``additionalProperties`` absent,
+    our tools count as closed (their ``run`` ignores what it does not read) and a tool with
+    ``open_arguments`` counts as open; an explicit ``additionalProperties: false`` closes either.
+
+    Why it exists: on 2026-10-09 a model called ``read_file`` with ``offset`` for the declared
+    ``start_line``. The tool took the unknown name without a word and returned the first window
+    again; the model asked four more times and the turn hung. An ignored argument reads as a call
+    that worked, which is the one answer a model cannot correct from.
+    """
+    schema = getattr(tool, "parameters", None)
+    if not isinstance(schema, dict):
+        return []
+    properties = schema.get("properties")
+    if not isinstance(properties, dict) or schema.get("patternProperties"):
+        return []
+    extra = schema.get("additionalProperties")
+    if extra is True or isinstance(extra, dict):
+        return []
+    if not properties and extra is not False:
+        # `{"properties": {}}` is this class's default: what a tool has when it declared nothing,
+        # not a promise that it takes nothing. Only an explicit `false` makes it a no-argument tool.
+        return []
+    if extra is not False and _chain_has_open_arguments(tool):
+        return []
+    return [name for name in arguments if name not in properties]
+
+
+def unknown_arguments_error(tool: Any, arguments: dict[str, Any]) -> str | None:
+    """The observation for a call with undeclared arguments, or None when every name is declared.
+
+    Names the offending argument and lists the accepted ones, so the next call can be the right one.
+    Deliberately not an alias (``offset`` → ``start_line``): that would hide the model's mistake
+    from the model and from us, and keep the wrong name alive in every later call.
+    """
+    unknown = undeclared_arguments(tool, arguments)
+    if not unknown:
+        return None
+    properties = getattr(tool, "parameters", {}).get("properties", {})
+    accepted = ", ".join(properties) or "none"
+    noun = "argument" if len(unknown) == 1 else "arguments"
+    names = ", ".join(repr(n) for n in unknown)
+    return f"error: {tool.name}: unknown {noun} {names}; accepted: {accepted}"
+
 
 #: Marks an observation as a gate REFUSING to run the tool, rather than the tool having run.
 #:

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from chimera.telemetry import get_logger
-from chimera.tools.base import Tool, is_refusal
+from chimera.tools.base import Tool, is_refusal, unknown_arguments_error
 
 _log = get_logger("tools.registry")
 
@@ -88,7 +88,11 @@ class ToolRegistry:
         from chimera.obs import span
 
         with span("tool.run", **{"tool.name": name}) as sp:
-            out = self.get(name).run(**kwargs)
+            tool = self.get(name)
+            # Before the tool, and before its wrappers: an argument the schema does not declare is
+            # one the tool would have ignored, and a governance gate approving a call that then
+            # quietly did something else is not a check worth running.
+            out = unknown_arguments_error(tool, kwargs) or tool.run(**kwargs)
             # Same question as `Agent.run` asks, so it must have the same answer — the rule
             # was written out twice and only one copy knew about refusals.
             sp.set(**{
