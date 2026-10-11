@@ -51,7 +51,7 @@ import { HtmlPreview } from "@/components/code/HtmlPreview";
 import { ProjectPicker } from "@/components/code/ProjectPicker";
 import { ProjectPackCard } from "@/components/code/ProjectPackCard";
 import { useRunSession } from "@/lib/run-session";
-import { useT } from "@/lib/i18n";
+import { useNum, useT } from "@/lib/i18n";
 import { useLayout } from "@/lib/layout/context";
 import type { OutputStyle } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -198,6 +198,9 @@ function ImagePreview({ workspace, path }: { workspace: string; path: string }) 
   );
 }
 
+/** Mirrors `MAX_VIEW_CHARS` in chimera/api/fs_api.py: the most the viewer asks for at once. */
+const VIEW_ALL_CHARS = 1_000_000;
+
 /** The center column: a syntax-highlighted viewer with an opt-in editor. Read-only is the default;
  *  "Edit" swaps in a mono textarea → Save PUTs it (atomic + newline-preserving + size-capped
  *  server-side). Truncated/binary files are NOT editable (saving would clobber the unseen remainder).
@@ -221,9 +224,17 @@ function Viewer({
   const t = useT();
   const panelName = t("layout.panel.viewer");
   const qc = useQueryClient();
+  // The first 20,000 characters, as the agent reads them; the rest on request (plan, 2026-10-10:
+  // a long file showed a "truncated" badge and no way to read further).
+  const [whole, setWhole] = useState(false);
+  const num = useNum();
+  useEffect(() => setWhole(false), [path]);
   const q = useQuery({
-    queryKey: ["fs-file", workspace, path],
-    queryFn: () => getFsFile(workspace || null, path as string),
+    queryKey: ["fs-file", workspace, path, whole],
+    queryFn: () =>
+      whole
+        ? getFsFile(workspace || null, path as string, VIEW_ALL_CHARS)
+        : getFsFile(workspace || null, path as string),
     enabled: path !== null,
   });
   const name = path ? path.split("/").pop() ?? path : "";
@@ -296,6 +307,13 @@ function Viewer({
         </span>
         {dirty ? <Badge tone="warn">{t("code.dirty")}</Badge> : null}
         {q.data?.truncated ? <Badge tone="warn">{t("code.truncated")}</Badge> : null}
+        {q.data?.truncated && !whole && q.data.total_chars ? (
+          <Button size="sm" variant="outline" onClick={() => setWhole(true)}>
+            {t("code.showWhole", {
+              n: num(Math.min(q.data.total_chars, VIEW_ALL_CHARS)),
+            })}
+          </Button>
+        ) : null}
         {savedFlash && !editing ? (
           <span className="text-xs text-ok-foreground">{t("code.saved")}</span>
         ) : null}

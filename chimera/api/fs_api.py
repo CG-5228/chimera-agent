@@ -27,6 +27,9 @@ from chimera.tools.workspace import (
 )
 
 _MAX_READ_CHARS = 20_000  # mirrors ReadFileTool's cap
+#: How much the viewer may ask for when the person chooses to see a long file whole. The default stays
+#: at the agent's cap; this is only reached by asking, and keeps a huge log from freezing the screen.
+MAX_VIEW_CHARS = 1_000_000
 _MAX_WRITE_BYTES = 1_000_000  # 1 MB cap for the editable viewer's save
 _MAX_IMAGE_BYTES = 20_000_000  # 20 MB cap for an inline preview, matching the attachment ceiling
 
@@ -75,7 +78,9 @@ def _document_text(path: Path) -> str:
     return _markitdown_convert(str(path))
 
 
-def _read_document(path: Path, rel: str, fmt: str) -> dict[str, Any]:
+def _read_document(
+    path: Path, rel: str, fmt: str, max_chars: int = _MAX_READ_CHARS
+) -> dict[str, Any]:
     """A text preview of a document, or an empty one with a note saying why there is none."""
     base: dict[str, Any] = {"path": rel, "content": "", "truncated": False, "document": fmt}
     if path.stat().st_size > _MAX_DOCUMENT_BYTES:
@@ -86,8 +91,11 @@ def _read_document(path: Path, rel: str, fmt: str) -> dict[str, Any]:
         return {**base, "note": "previewing documents needs the 'documents' extra"}
     except Exception:  # noqa: BLE001 — a document that will not convert is a note, never a 500
         return {**base, "note": "could not be read as a document"}
-    truncated = len(text) > _MAX_READ_CHARS
-    return {**base, "content": text[:_MAX_READ_CHARS], "truncated": truncated, "note": ""}
+    truncated = len(text) > max_chars
+    return {
+        **base, "content": text[:max_chars], "truncated": truncated, "note": "",
+        "total_chars": len(text),
+    }
 
 
 class NotEditableTextError(Exception):
@@ -133,8 +141,11 @@ def list_tree(workspace: Path, rel: str, *, max_entries: int = 500) -> dict[str,
     return {"workspace": str(root), "path": rel, "entries": entries, "capped": capped}
 
 
-def read_file(workspace: Path, rel: str) -> dict[str, Any]:
-    """Read ``rel`` as UTF-8 text (capped at ``_MAX_READ_CHARS``), mirroring ``ReadFileTool``.
+def read_file(workspace: Path, rel: str, max_chars: int = _MAX_READ_CHARS) -> dict[str, Any]:
+    """Read ``rel`` as UTF-8 text (capped at ``max_chars``), mirroring ``ReadFileTool`` by default.
+
+    ``total_chars`` says how long the text is, so a viewer can offer the rest: it showed the first
+    20,000 characters with a "truncated" badge and no way to read further (plan, 2026-10-10).
 
     A directory, a binary/undecodable file, or a missing path returns an empty ``content`` + a short
     ``note`` — never a raise (except a path escape, which the caller turns into a 400).
@@ -148,15 +159,18 @@ def read_file(workspace: Path, rel: str) -> dict[str, Any]:
         return {"path": rel, "content": "", "truncated": False, "note": "not found"}
     fmt = _DOCUMENT_FORMATS.get(path.suffix.lower())
     if fmt is not None:
-        return _read_document(path, rel, fmt)
+        return _read_document(path, rel, fmt, max_chars)
     try:
         text = path.read_text(encoding="utf-8")
     except (UnicodeDecodeError, OSError):
         return {"path": rel, "content": "", "truncated": False, "note": "binary or non-text"}
-    truncated = len(text) > _MAX_READ_CHARS
+    total = len(text)
+    truncated = total > max_chars
     if truncated:
-        text = text[:_MAX_READ_CHARS]
-    return {"path": rel, "content": text, "truncated": truncated, "note": ""}
+        text = text[:max_chars]
+    return {
+        "path": rel, "content": text, "truncated": truncated, "note": "", "total_chars": total,
+    }
 
 
 def read_image(

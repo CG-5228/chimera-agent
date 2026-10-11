@@ -7046,6 +7046,8 @@ export interface components {
             note: string;
             /** Path */
             path: string;
+            /** Total Chars */
+            total_chars?: number | null;
             /** Truncated */
             truncated: boolean;
         };
@@ -13334,6 +13336,7 @@ export interface operations {
             query: {
                 path: string;
                 workspace?: string | null;
+                max_chars?: number | null;
             };
             header?: never;
             path?: never;
