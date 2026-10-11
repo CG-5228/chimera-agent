@@ -221,6 +221,15 @@ class RunState:
     report_defects: list[dict[str, str]] = field(default_factory=list)
     #: One paragraph: what the agent was doing and how far it had got.
     current_state: str = ""
+    #: Tool calls made so far in this run, per tool, as the loop counted them — refused calls
+    #: included, because each one is a call the model made.
+    #:
+    #: Without it the model reports its own work from memory, and compaction is exactly what takes
+    #: that memory away. Observed 2026-10-09/10 through the desktop bridge: a run compacted twice
+    #: said it had made 17 searches and the receipt held 34; another said 6 and held 38. The
+    #: structural note names the tools in the dropped span but not how many calls, so nothing in
+    #: front of the model could correct it. Set by the agent loop just before it compacts.
+    tool_calls: dict[str, int] = field(default_factory=dict)
 
     def as_message(self) -> MessageLike | None:
         """Render as a single user message, or None when there is nothing to restore."""
@@ -240,6 +249,13 @@ class RunState:
             parts.append(f"Plan:\n{self.plan}")
         if self.tasks:
             parts.append("Tasks:\n" + "\n".join(f"- {t}" for t in self.tasks))
+        if self.tool_calls:
+            counted = sorted(self.tool_calls.items(), key=lambda item: (-item[1], item[0]))
+            parts.append(
+                f"Tool calls made so far in this run, counted by the harness "
+                f"({sum(self.tool_calls.values())} in all; report these numbers, not an estimate):\n"
+                + "\n".join(f"- {name}: {count}" for name, count in counted)
+            )
         if self.open_file:
             path, content = self.open_file
             parts.append(f"File currently being edited — {path}:\n{content}")
