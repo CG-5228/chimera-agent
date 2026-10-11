@@ -344,6 +344,8 @@ class BridgeJob:
     approvals: list[dict[str, Any]] = field(default_factory=list)
     blocked: bool = False
     """The last thing the stream said was an approval question: it is waiting for a person."""
+    folder_wait: bool = False
+    """The turn said it is waiting for its folder, and has said nothing else since."""
     changed: asyncio.Event = field(default_factory=asyncio.Event)
     task: asyncio.Task[None] | None = None
 
@@ -356,6 +358,7 @@ class BridgeJob:
             piece = data.get("text", "") if isinstance(data, dict) else str(data)
             self.text = (self.text + str(piece))[-_MAX_TEXT:]
             self.blocked = False
+            self.folder_wait = False
         elif event == "frame":
             return  # a screenshot for the screen; base64 JPEG is noise to a text client
         else:
@@ -363,6 +366,11 @@ class BridgeJob:
             self.events.append({"n": self.seq, "event": event, "data": data})
             del self.events[:-_MAX_EVENTS]
             self.blocked = event == "approval"
+            # The coding turn's "folder_busy" notice: queued behind another conversation or run in
+            # the same folder. Anything else it says after that means it got the folder.
+            self.folder_wait = (
+                event == "notice" and isinstance(data, dict) and data.get("code") == "folder_busy"
+            )
             if event == "approval" and isinstance(data, dict):
                 self.approvals.append(data)
             elif event == "session" and isinstance(data, dict):
@@ -373,6 +381,17 @@ class BridgeJob:
             elif event == "error":
                 self.error = str(data.get("message", data) if isinstance(data, dict) else data)
         self.changed.set()
+
+    @property
+    def ended(self) -> bool:
+        """The turn said how it ended — an answer or an error — whether or not the stream closed.
+
+        `done` is set only when the stream closes, and the app closes it after the turn's
+        bookkeeping, not at its last word. Read alone, a turn that had failed showed as "still
+        running" for as long as the stream stayed open (observed 2026-10-09: a failure at ~15:43
+        read as running for 90 minutes; plan M1).
+        """
+        return self.done or bool(self.error) or self.final is not None
 
 
 class BridgeJobs:
@@ -455,6 +474,15 @@ class BridgeJobOut(BaseModel):
     events: list[dict[str, Any]]
     next: int
     elapsed_seconds: float
+    ended: bool = False
+    waiting_for_folder: bool = False
+    turn_running: bool | None = None
+
+
+class BridgeJobStopOut(BaseModel):
+    job_id: str
+    turn_id: str
+    stopping: bool
 
 
 class BridgeCallOut(BaseModel):
@@ -509,7 +537,11 @@ def _still_waiting(
 
 
 def _job_out(
-    job: BridgeJob, since: int, tokens: list[str], is_waiting: Callable[[str], bool]
+    job: BridgeJob,
+    since: int,
+    tokens: list[str],
+    is_waiting: Callable[[str], bool],
+    turn_running: Callable[[str], bool | None] = lambda _turn_id: None,
 ) -> dict[str, Any]:
     pending = [] if job.done else _still_waiting(job, is_waiting, time.time())
     return dict(
@@ -531,6 +563,11 @@ def _job_out(
                 "events": [e for e in job.events if e["n"] > since],
                 "next": job.seq,
                 "elapsed_seconds": round(time.monotonic() - job.started, 1),
+                "ended": job.ended,
+                "waiting_for_folder": job.folder_wait and not job.ended,
+                # What the app's own registry says, beside what the stream said: the two disagree
+                # exactly when a stream outlives its turn, and then this is the one to believe.
+                "turn_running": turn_running(job.turn_id) if job.turn_id and not job.done else None,
             },
             tokens,
         )
@@ -640,6 +677,11 @@ def register_bridge_api(
         from chimera.governance.pending import is_waiting
 
         return is_waiting(Path(live_settings().home), request_id)
+
+    def turn_running(turn_id: str) -> bool | None:
+        """Whether the app's registry of coding turns still lists ``turn_id``; None without one."""
+        live = getattr(app.state, "live_turns", None)
+        return None if live is None else live.get(turn_id) is not None
 
     async def plain(
         method: str, path: str, query: dict[str, Any] | None = None, body: Any = None
@@ -1119,7 +1161,11 @@ def register_bridge_api(
         await jobs.wait(job, wait)
         if job.blocked:
             await asyncio.sleep(0.2)  # let a question's sibling frames land with it
-        return {"route": req.route, "status": 200, "job": _job_out(job, 0, hidden(), waiting)}
+        return {
+            "route": req.route,
+            "status": 200,
+            "job": _job_out(job, 0, hidden(), waiting, turn_running),
+        }
 
     @app.get("/api/bridge/jobs/{job_id}", response_model=BridgeJobOut, tags=["bridge"])
     async def bridge_job(
@@ -1132,4 +1178,38 @@ def register_bridge_api(
                 status_code=404, detail="no such job (they are kept in memory only)"
             )
         await jobs.wait(job, wait_seconds)
-        return _job_out(job, since, hidden(), waiting)
+        return _job_out(job, since, hidden(), waiting, turn_running)
+
+    @app.post(
+        "/api/bridge/jobs/{job_id}/stop", response_model=BridgeJobStopOut, tags=["bridge"]
+    )
+    async def bridge_job_stop(job_id: str, request: Request) -> dict[str, Any]:
+        """Stop the coding turn a ``conversations.send`` job started — running, or queued for its folder.
+
+        The app could always stop a turn (`POST /api/code/turns/{id}/stop`, the operate tier), but a
+        client of the bridge had to know that route and dig the turn id out of the job, and a turn
+        queued behind another in the same folder looked like one that hung (plan M1). Stopping only
+        narrows, so the operate tier is enough. A refusal says why, never a 200 that stopped nothing.
+        """
+        bridge.authorize(request)
+        job = jobs.get(job_id)
+        if job is None:
+            raise HTTPException(
+                status_code=404, detail="no such job (they are kept in memory only)"
+            )
+        if job.route != "conversations.send":
+            raise HTTPException(
+                status_code=400,
+                detail=f"a {job.route} job is stopped with its own area's action (for a run, "
+                "runs.cancel); this stops a conversation's turn",
+            )
+        if job.ended:
+            raise HTTPException(status_code=409, detail="this job has already ended")
+        if not job.turn_id:
+            raise HTTPException(
+                status_code=409, detail="the turn has not started yet; ask again in a moment"
+            )
+        live = getattr(app.state, "live_turns", None)
+        if live is None or not live.request_stop(job.turn_id):
+            raise HTTPException(status_code=409, detail="that turn is not running any more")
+        return {"job_id": job.id, "turn_id": job.turn_id, "stopping": True}

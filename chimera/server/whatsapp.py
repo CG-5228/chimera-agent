@@ -18,7 +18,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from chimera.providers.failover import policy_block
-from chimera.server.gateway import InboundMessage
+from chimera.server.gateway import InboundMessage, chunk_text
 from chimera.server.inbound_media import read_bounded, refusal_reply
 from chimera.telemetry import get_logger
 
@@ -40,24 +40,44 @@ class WhatsAppSender:
         return f"https://graph.facebook.com/{self.api_version}/{self.phone_number_id}/messages"
 
     def send(self, chat_id: str, text: str) -> str:
-        """MessageSender: send a text message to a recipient phone number (E.164)."""
+        """MessageSender: send a text message to a recipient phone number (E.164).
+
+        Longer than one WhatsApp message, the text goes as consecutive messages, as the Discord,
+        Telegram and Slack senders already do. It used to be cut at 4,096 characters with nothing
+        said to anyone: the rest of a long reply was simply not there (plan M5).
+        """
         import httpx
 
         headers = {"Authorization": f"Bearer {self.access_token}"}
-        body = {
-            "messaging_product": "whatsapp",
-            "to": chat_id,
-            "type": "text",
-            "text": {"body": text[:_WHATSAPP_LIMIT] or "(no reply)"},
-        }
+        parts = chunk_text(text, _WHATSAPP_LIMIT) or ["(no reply)"]
+        sent = 0
         try:
             with httpx.Client(timeout=30) as client:
-                data = client.post(self._url(), headers=headers, json=body).json()
+                for part in parts:
+                    body = {
+                        "messaging_product": "whatsapp",
+                        "to": chat_id,
+                        "type": "text",
+                        "text": {"body": part},
+                    }
+                    data = client.post(self._url(), headers=headers, json=body).json()
+                    if isinstance(data, dict) and data.get("error"):
+                        reason = data["error"].get("message", "unknown")
+                        return self._failed(reason, sent, len(parts))
+                    sent += 1
         except (httpx.HTTPError, ValueError) as exc:
-            return f"error: whatsapp send failed: {exc}"
-        if isinstance(data, dict) and data.get("error"):
-            return f"error: whatsapp send failed: {data['error'].get('message', 'unknown')}"
-        return f"sent message to whatsapp {chat_id}"
+            return self._failed(str(exc), sent, len(parts))
+        if len(parts) == 1:
+            return f"sent message to whatsapp {chat_id}"
+        return f"sent {len(parts)} messages to whatsapp {chat_id} (the text was split to fit)"
+
+    @staticmethod
+    def _failed(reason: str, sent: int, total: int) -> str:
+        # How much got through is part of the answer: a reply delivered in part is not one that
+        # failed whole, and neither is it one that arrived.
+        if total == 1:
+            return f"error: whatsapp send failed: {reason}"
+        return f"error: whatsapp send failed after {sent} of {total} parts were sent: {reason}"
 
     @staticmethod
     def parse_inbounds(payload: dict[str, Any]) -> list[tuple[str | None, InboundMessage]]:
@@ -264,7 +284,12 @@ class WhatsAppWebhook:
                     _log.warning("whatsapp: content-policy refusal for %s: %s", message.chat_id, exc)
                     reply = block.chat_sentence()
                 if reply:
-                    self.sender.send(message.chat_id, reply)
+                    outcome = self.sender.send(message.chat_id, reply)
+                    if str(outcome).startswith("error:"):
+                        # Logged, not raised: raising makes Meta deliver the message again, and the
+                        # agent would answer (and spend) a second time for a reply that only failed
+                        # to arrive.
+                        _log.warning("whatsapp: the reply to %s was not delivered: %s", message.chat_id, outcome)
             except Exception:
                 # The POST fails and Meta delivers it again. The id was recorded before the turn, so
                 # without this the redelivery would be dropped as a duplicate and the message that

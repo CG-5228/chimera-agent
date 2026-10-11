@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from chimera.sandbox.confirm import sandbox_is_isolated
+from chimera.sandbox.docker import docker_refusal
 from chimera.tools.base import Tool
 from chimera.tools.clip import clip_output, keep_tail_enabled
 from chimera.tools.workspace import audit_refusal, queue_refusal
@@ -170,6 +171,9 @@ class RunShellTool(Tool):
         if fenced is not None:
             return fenced
         sandbox = self._sandbox or LocalSandbox()
+        refused = docker_refusal(sandbox)
+        if refused is not None:
+            return refused
         if self._confirm is not None and not self._sandbox_is_isolated(sandbox):
             # The prompt shows what the command resolves to here (S30-30), as the governance cards
             # do; the callback itself still gets exactly the command, which is what it classifies.

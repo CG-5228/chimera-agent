@@ -21,6 +21,10 @@ from chimera.telemetry import get_logger
 _log = get_logger("server.signal")
 
 
+class SignalSendError(RuntimeError):
+    """The signal bridge refused a send; the message carries its status and its reason."""
+
+
 class SignalAdapter:
     """A platform transport + sender for Signal via a signal-cli-rest-api bridge."""
 
@@ -70,10 +74,17 @@ class SignalAdapter:
         return InboundMessage(text=text, chat_id=source, platform=self.platform, user=source)
 
     def _send_via(self, client: Any, chat_id: str, text: str) -> None:
-        client.post(
+        response = client.post(
             f"{self.api_url}/v2/send",
             json={"message": text, "number": self.number, "recipients": [chat_id]},
         )
+        # The bridge answers a refused send with an HTTP error and a body that says why. Unread, a
+        # message the bridge never delivered was reported as "sent" to the agent that sent it, and
+        # the reply to an inbound one simply vanished (plan M5).
+        status = getattr(response, "status_code", None)
+        if isinstance(status, int) and status >= 400:
+            detail = str(getattr(response, "text", "") or "").strip()[:200]
+            raise SignalSendError(f"the signal bridge answered HTTP {status}: {detail or 'no detail'}")
 
     def _typing(self, client: Any, chat_id: str, *, on: bool) -> None:
         """Start/stop the Signal typing indicator via the bridge (best-effort; expires, so refreshed)."""
@@ -109,7 +120,11 @@ class SignalAdapter:
                         ping=partial(self._typing, client, inbound.chat_id, on=True),
                     )
                     self._typing(client, inbound.chat_id, on=False)
-                    self._send_via(client, inbound.chat_id, reply)
+                    try:
+                        self._send_via(client, inbound.chat_id, reply)
+                    except (httpx.HTTPError, SignalSendError) as exc:
+                        # One undelivered reply must not end the listener for every later message.
+                        _log.warning("signal: the reply to %s was not delivered: %s", inbound.chat_id, exc)
                 time.sleep(self.poll_interval)
 
     def stop(self) -> None:
@@ -122,6 +137,6 @@ class SignalAdapter:
         try:
             with httpx.Client(timeout=30) as client:
                 self._send_via(client, chat_id, text)
-        except httpx.HTTPError as exc:
+        except (httpx.HTTPError, SignalSendError) as exc:
             return f"error: signal send failed: {exc}"
         return f"sent message to signal {chat_id}"

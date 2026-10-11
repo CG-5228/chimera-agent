@@ -68,11 +68,23 @@ def test_a_container_resolves_its_own_interpreter(monkeypatch: pytest.MonkeyPatc
     assert sys.executable not in cmd  # a path from this machine means nothing inside the container
 
 
-def test_a_docker_sandbox_without_a_daemon_runs_here(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_docker_sandbox_without_a_daemon_keeps_the_containers_command(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Without a fallback a missing daemon refuses the command (plan M8): nothing runs here, so a
+    # path to this machine's interpreter would describe a run that cannot happen.
     sandbox = DockerSandbox()
     monkeypatch.setattr(sandbox, "available", lambda: False)
     cmd = python_command(sandbox, "x.py")
-    assert cmd is not None and sys.executable in cmd  # it falls back to the local sandbox
+    assert cmd is not None and "command -v python3" in cmd
+    assert sys.executable not in cmd
+
+
+def test_a_docker_sandbox_given_a_host_fallback_runs_here(monkeypatch: pytest.MonkeyPatch) -> None:
+    sandbox = DockerSandbox(fallback=LocalSandbox())
+    monkeypatch.setattr(sandbox, "available", lambda: False)
+    cmd = python_command(sandbox, "x.py")
+    assert cmd is not None and sys.executable in cmd
 
 
 def test_another_kind_of_sandbox_keeps_the_command_it_had() -> None:

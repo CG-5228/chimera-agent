@@ -1765,6 +1765,11 @@
             "title": "Elapsed Seconds",
             "type": "number"
           },
+          "ended": {
+            "default": false,
+            "title": "Ended",
+            "type": "boolean"
+          },
           "error": {
             "default": "",
             "title": "Error",
@@ -1813,8 +1818,24 @@
             "title": "Turn Id",
             "type": "string"
           },
+          "turn_running": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Turn Running"
+          },
           "waiting_for_approval": {
             "title": "Waiting For Approval",
+            "type": "boolean"
+          },
+          "waiting_for_folder": {
+            "default": false,
+            "title": "Waiting For Folder",
             "type": "boolean"
           }
         },
@@ -1832,6 +1853,29 @@
           "elapsed_seconds"
         ],
         "title": "BridgeJobOut",
+        "type": "object"
+      },
+      "BridgeJobStopOut": {
+        "properties": {
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "stopping": {
+            "title": "Stopping",
+            "type": "boolean"
+          },
+          "turn_id": {
+            "title": "Turn Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "turn_id",
+          "stopping"
+        ],
+        "title": "BridgeJobStopOut",
         "type": "object"
       },
       "BridgeStatusOut": {
@@ -14488,6 +14532,49 @@
           }
         },
         "summary": "Bridge Job",
+        "tags": [
+          "bridge"
+        ]
+      }
+    },
+    "/api/bridge/jobs/{job_id}/stop": {
+      "post": {
+        "description": "Stop the coding turn a ``conversations.send`` job started \u2014 running, or queued for its folder.\n\nThe app could always stop a turn (`POST /api/code/turns/{id}/stop`, the operate tier), but a\nclient of the bridge had to know that route and dig the turn id out of the job, and a turn\nqueued behind another in the same folder looked like one that hung (plan M1). Stopping only\nnarrows, so the operate tier is enough. A refusal says why, never a 200 that stopped nothing.",
+        "operationId": "bridge_job_stop_api_bridge_jobs__job_id__stop_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BridgeJobStopOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bridge Job Stop",
         "tags": [
           "bridge"
         ]

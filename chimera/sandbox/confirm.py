@@ -83,9 +83,9 @@ def sandbox_is_isolated(sandbox: object) -> bool:
     """True when the sandbox genuinely isolates from the host (so no host-exec confirm is needed).
 
     Duck-typed and shared by every host-exec consumer, so they cannot drift apart: a backend that
-    runs in a real container reports ``is_isolated() -> True``. A DockerSandbox that has fallen back
-    to local (no daemon) reports False — its host execution stays gated, closing the "docker
-    configured but silently ran on the host" gap. A backend whose ``is_isolated`` is not callable
+    runs in a real container reports ``is_isolated() -> True``. A DockerSandbox with no daemon reports
+    False: without a fallback it refuses the command (`docker_refusal`), and with one the host
+    execution stays gated, closing the "docker configured but silently ran on the host" gap. A backend whose ``is_isolated`` is not callable
     counts as host (the safe direction) instead of crashing.
     """
     fn = getattr(sandbox, "is_isolated", None)
@@ -221,7 +221,7 @@ def resolve_host_exec_confirm(
     settings = settings or get_settings()
 
     # NOTE: do NOT short-circuit on `settings.sandbox == "docker"` here. A docker *config* is not
-    # proof of isolation — DockerSandbox falls back to the host when the daemon is down. Whether to
+    # proof of isolation — a DockerSandbox given a fallback runs there when the daemon is down. Whether to
     # skip the gate must be decided from the ACTUAL sandbox at call time: the shell/code tools consult
     # `sandbox.is_isolated()` and skip confirm only when the container is really up (docker up → True →
     # skipped; docker down → host → gated). Returning None here would make `deny` a no-op and let a

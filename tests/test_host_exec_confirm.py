@@ -146,6 +146,13 @@ def test_default_registry_gates_every_host_exec_door(monkeypatch: pytest.MonkeyP
     # not-isolated answer tests the gap that matters: docker configured, isolation absent.
     monkeypatch.setattr(RunShellTool, "_sandbox_is_isolated", staticmethod(lambda _s: False))
     monkeypatch.setattr("chimera.tools.code.sandbox_is_isolated", lambda _s: False)
+    # The daemon pinned as up, for the same reason. Since plan M8 a docker sandbox with NO daemon
+    # refuses before the gate is asked (`docker_refusal`), so on a box without Docker this test
+    # would read that refusal instead of the gate it is here to prove. That refusal has its own
+    # test (test_a_docker_sandbox_without_docker_refuses_and_runs_nothing.py).
+    from chimera.sandbox.docker import DockerSandbox
+
+    monkeypatch.setattr(DockerSandbox, "available", lambda _self: True)
     get_settings.cache_clear()
     try:
         registry = default_registry()
