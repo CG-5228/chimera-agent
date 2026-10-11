@@ -63,7 +63,11 @@ def test_start_runs_the_adapter_and_status_reflects_it(tmp_path: Path) -> None:
     adapter = _FakeAdapter()
     mgr = _manager(tmp_path, adapter=adapter)
 
-    assert mgr.status()["discord"] == {"configured": True, "running": False, "error": None}
+    assert mgr.status()["discord"] == {
+        "configured": True, "running": False, "error": None,
+        # How a running bot admits people (plan M7): nothing to say while it is stopped.
+        "pairing_code": None, "pairing": False, "open": False,
+    }
     mgr.start("discord")
     # The adapter runs in a background thread; give it a moment to enter start().
     for _ in range(200):

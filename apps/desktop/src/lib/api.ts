@@ -730,7 +730,15 @@ export const importSkillLibraryCard = (name: string) =>
   );
 
 // --- Messaging (reach the user on Discord/Telegram) ---
-export type MessagingPlatform = { configured: boolean; running: boolean; error: string | null };
+export type MessagingPlatform = {
+  configured: boolean;
+  running: boolean;
+  error: string | null;
+  /** While a new bot waits for its owner: the code to send it in a direct message. */
+  pairing_code?: string | null;
+  /** Running with no allowlist and no pairing: anyone who can message it gets a turn. */
+  open?: boolean;
+};
 export type MessagingStatus = Record<string, MessagingPlatform>;
 export const getMessaging = () => json<MessagingStatus>("/api/messaging");
 export const startMessaging = (platform: string) =>

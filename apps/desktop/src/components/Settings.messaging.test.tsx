@@ -114,6 +114,42 @@ describe("MessagingCard", () => {
     expect(screen.getByRole("textbox", { name: "Who can talk to the bot" })).toHaveValue("42");
   });
 
+  // Plan M7: a bot the app starts for the first time waits for its owner to send it a code. The
+  // console that also logs the code is read by nobody, so the card shows it, and does not call a
+  // bot "open to anyone" that answers nobody until it is paired.
+  it("shows the pairing code of a new bot instead of calling it open", async () => {
+    vi.mocked(getMessaging).mockResolvedValue({
+      discord: { configured: true, running: true, error: null, pairing_code: "K7Q2ZP4M", open: false },
+    } as never);
+    renderWithProviders(<MessagingCard save={vi.fn()} allowed={[]} />);
+
+    expect(await screen.findByText(/send K7Q2ZP4M to the bot in a direct message/)).toBeInTheDocument();
+    expect(screen.queryByText(/Anyone who can message/)).not.toBeInTheDocument();
+  });
+
+  it("trusts the server about a running bot paired with its owner", async () => {
+    // Paired: the owner is in the pairing record, not in the variable this card edits, so the list
+    // here is still empty, and only the server knows the bot answers one person.
+    vi.mocked(getMessaging).mockResolvedValue({
+      discord: { configured: true, running: true, error: null, pairing_code: null, open: false },
+    } as never);
+    renderWithProviders(<MessagingCard save={vi.fn()} allowed={[]} />);
+
+    expect(await screen.findByRole("switch", { name: "Run the Discord bot" })).toBeInTheDocument();
+    expect(screen.queryByText(/Anyone who can message/)).not.toBeInTheDocument();
+  });
+
+  it("still warns when the server says a running bot is open", async () => {
+    vi.mocked(getMessaging).mockResolvedValue({
+      discord: { configured: true, running: true, error: null, pairing_code: null, open: true },
+    } as never);
+    renderWithProviders(<MessagingCard save={vi.fn()} allowed={[]} />);
+
+    expect(
+      await screen.findByText(/Anyone who can message the Discord bot gets a turn/),
+    ).toBeInTheDocument();
+  });
+
   it("saves the list to the platform's own variable and says it applies at the next launch", async () => {
     const user = userEvent.setup();
     const save = vi.fn();

@@ -1274,11 +1274,19 @@ export function MessagingCard({
           onSave={(v) => save({ [allowedEnv]: v })}
         />
       </Row>
-      {configured && allowed.length === 0 && (
+      {/* A new bot the app started waits for its owner to send it this code (plan M7); the console
+          that also logs it is read by nobody. While it runs, whether it is open is the server's
+          answer: a bot paired with its owner has an empty list here and answers one person. */}
+      {d?.pairing_code ? (
+        <div className="px-4 pb-3 text-xs text-warn-foreground">
+          {t("settings.messaging.pairing", { code: d.pairing_code })}
+        </div>
+      ) : configured &&
+        (running && typeof d?.open === "boolean" ? d.open : allowed.length === 0) ? (
         <div className="px-4 pb-3 text-xs text-warn-foreground">
           {t("settings.messaging.open", { platform: label })}
         </div>
-      )}
+      ) : null}
       {/* Discord only: it is the one adapter that sends files. Below the allowlist because it depends
           on it — the server attaches nothing while the list is empty, and the line under the switch
           says so, so an "on" switch never reads as files going out when none do. */}

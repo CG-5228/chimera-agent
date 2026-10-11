@@ -9352,6 +9352,27 @@
             ],
             "title": "Error"
           },
+          "open": {
+            "default": false,
+            "title": "Open",
+            "type": "boolean"
+          },
+          "pairing": {
+            "default": false,
+            "title": "Pairing",
+            "type": "boolean"
+          },
+          "pairing_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pairing Code"
+          },
           "running": {
             "title": "Running",
             "type": "boolean"

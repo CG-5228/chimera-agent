@@ -1799,6 +1799,12 @@ class MessagingPlatformOut(BaseModel):
     configured: bool
     running: bool
     error: str | None = None
+    #: While a new bot waits for its owner: the code to send it in a direct message. Never through
+    #: the desktop bridge, which gets only ``pairing``: that a code is pending.
+    pairing_code: str | None = None
+    pairing: bool = False
+    #: Running with no allowlist and no pairing: anyone who can message it gets a turn.
+    open: bool = False
 
 
 #: Why no kernel boundary applies. The OS causes come from `chimera.sandbox.os_sandbox`;
