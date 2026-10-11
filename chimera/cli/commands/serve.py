@@ -787,6 +787,12 @@ def desktop_app(
         graph=shared_graph,
     )
 
+    # Warnings and errors to disk as well (plan M5). The app starts this process as a child, so its
+    # console is read by nobody, and a turn that failed for a reason no sentence names left no trace.
+    from chimera.file_log import attach_file_log
+
+    attach_file_log(Path(settings.home).expanduser() / "logs" / "backend.log")
+
     # Bind BEFORE announcing so the URL reflects the real port (a busy 8765 falls back to a free one
     # instead of crashing). The bound socket is handed to uvicorn, so there is no close-then-rebind gap.
     sock, port = _bind_app_socket(host, port)

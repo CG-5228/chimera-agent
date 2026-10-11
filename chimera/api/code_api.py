@@ -456,10 +456,10 @@ def _native_failure(exc: Exception) -> str:
     """
     text = str(exc).strip()
     if not text:
-        return "the coding turn failed"
+        return _unnamed_failure(exc)
     first = text.splitlines()[0].strip()
     if not any(marker in first.lower() for marker in _ACTIONABLE):
-        return "the coding turn failed"
+        return _unnamed_failure(exc)
 
     # The provider's sentence, without the wrapping. LiteLLM stacks its own class names in front of
     # the body and the body is usually JSON, so the raw string reads
@@ -477,6 +477,29 @@ def _native_failure(exc: Exception) -> str:
 
     # Bounded: a provider that answers with a wall of JSON must not paste it into the transcript.
     return first if len(first) <= 300 else f"{first[:297]}…"
+
+
+def _unnamed_failure(exc: Exception) -> str:
+    """The sentence for a failure no provider explained: its kind, and where the details are.
+
+    Still no message text and no stack trace: those are internal, and a path or a request body in
+    the composer helps nobody. But the bare sentence left nothing to act on, for the person or for
+    whoever debugs it — observed three times on 2026-10-09/10 through the desktop bridge, with no
+    log anywhere to read (plan M5). The exception's class is not internal text, a timeout and a lost
+    connection are worth saying in words, and the log file holds the traceback.
+    """
+    from chimera.file_log import file_log_path
+
+    kind = type(exc).__name__
+    lowered = f"{kind} {exc}".lower()
+    if isinstance(exc, TimeoutError) or "timeout" in kind.lower() or "timed out" in lowered:
+        sentence = f"the coding turn failed: the model did not answer in time ({kind})"
+    elif isinstance(exc, ConnectionError) or "connection" in kind.lower():
+        sentence = f"the coding turn failed: the model provider could not be reached ({kind})"
+    else:
+        sentence = f"the coding turn failed ({kind})"
+    log = file_log_path()
+    return f"{sentence}; the details are in {log}" if log is not None else sentence
 
 
 def turn_can_change_the_folder(agent: Any, provider: str | None) -> bool:
@@ -2879,7 +2902,9 @@ def register_code_api(
                 )
 
             except Exception as exc:  # noqa: BLE001 — surfaced to the client as an error event
-                _log.warning("code turn failed: %s", exc)
+                # With the traceback: the backend log on disk is where `_unnamed_failure` sends the
+                # person, and a one-line message there would repeat the sentence they already read.
+                _log.warning("code turn failed: %s", exc, exc_info=True)
                 # A turn that failed after paying for work is still a turn that spent money.
                 #
                 # `_log_usage` lives in `_verify_and_finish`, which only the success path reaches —
