@@ -1,13 +1,25 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ListChecks } from "lucide-react";
+import { ListChecks, Search } from "lucide-react";
 import { getRuns } from "@/lib/api";
 import { Badge, EmptyState, Panel, Screen, Spinner } from "@/components/ui/panel";
 import { ErrorState } from "@/components/ui/async";
+import { focusRing } from "@/components/ui/focus";
 import { useT, type TFunc } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import type { AttemptReceipt, RunReceipt } from "@/lib/types";
 
 const MAX_TASK = 160;
 const MAX_OUTPUT = 4000;
+/** Runs drawn before "show older". Every attempt of every run used to render at once. */
+const PAGE = 20;
+
+type Outcome = "all" | "passed" | "failed" | "paused";
+
+function outcomeOf(run: RunReceipt): Exclude<Outcome, "all"> {
+  if (run.paused) return "paused";
+  return run.success ? "passed" : "failed";
+}
 
 function truncate(text: string, n: number): string {
   return text.length > n ? `${text.slice(0, n)}…` : text;
@@ -117,9 +129,22 @@ function RunCard({ run, t }: { run: RunReceipt; t: TFunc }) {
           {run.verify_command ?? t("runs.noVerify")}
         </span>
       </div>
-      {run.attempts.map((attempt) => (
-        <AttemptRow key={attempt.index} attempt={attempt} t={t} />
-      ))}
+      {/* The last attempt is the one that decided the run; the ones before it are how it got there.
+          A run that retried four times drew four full attempts, and a long history scrolled for
+          pages before reaching the next run. */}
+      {run.attempts.length > 1 ? (
+        <details className="border-t border-hairline">
+          <summary className="cursor-pointer px-4 py-2 text-xs text-muted-foreground hover:text-foreground">
+            {t("runs.earlier", { n: run.attempts.length - 1 })}
+          </summary>
+          {run.attempts.slice(0, -1).map((attempt) => (
+            <AttemptRow key={attempt.index} attempt={attempt} t={t} />
+          ))}
+        </details>
+      ) : null}
+      {run.attempts.length > 0 ? (
+        <AttemptRow attempt={run.attempts[run.attempts.length - 1]} t={t} />
+      ) : null}
     </Panel>
   );
 }
@@ -142,7 +167,25 @@ export function Runs({
   // Keyed by project, so switching project refetches rather than showing the previous one's runs
   // until something else happens to invalidate.
   const q = useQuery({ queryKey: ["runs", workspace], queryFn: () => getRuns(workspace) });
-  const runs = q.data ?? [];
+  const runs = useMemo(() => q.data ?? [], [q.data]);
+  const [outcome, setOutcome] = useState<Outcome>("all");
+  const [query, setQuery] = useState("");
+  const [shown, setShown] = useState(PAGE);
+  const counts = useMemo(() => {
+    const c = { all: runs.length, passed: 0, failed: 0, paused: 0 };
+    for (const r of runs) c[outcomeOf(r)] += 1;
+    return c;
+  }, [runs]);
+  const needle = query.trim().toLowerCase();
+  const visible = runs.filter(
+    (r) => (outcome === "all" || outcomeOf(r) === outcome) && (!needle || (r.task ?? "").toLowerCase().includes(needle)),
+  );
+  const chips: { value: Outcome; label: string }[] = [
+    { value: "all", label: t("runs.filter.all", { n: counts.all }) },
+    { value: "passed", label: t("runs.filter.passed", { n: counts.passed }) },
+    { value: "failed", label: t("runs.filter.failed", { n: counts.failed }) },
+    { value: "paused", label: t("runs.filter.paused", { n: counts.paused }) },
+  ];
 
   return (
     <Screen title={t("runs.title")} icon={<ListChecks className="h-5 w-5" />} embedded={embedded}>
@@ -159,7 +202,58 @@ export function Runs({
           <EmptyState text={t("runs.empty")} />
         </Panel>
       ) : (
-        runs.map((run, i) => <RunCard key={`${run.ts}-${i}`} run={run} t={t} />)
+        <>
+          {/* Find a run by what it was asked, or by how it ended. The list only grew, and the one
+              you wanted was somewhere in it. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="field flex h-8 min-w-56 flex-1 items-center gap-2 px-2.5">
+              <Search aria-hidden className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t("runs.search")}
+                aria-label={t("runs.search")}
+                className="min-w-0 flex-1 bg-transparent text-sm outline-hidden"
+              />
+            </label>
+            <div role="group" aria-label={t("runs.filter.label")} className="flex flex-wrap gap-1.5">
+              {chips.map((c) => (
+                <button
+                  key={c.value}
+                  type="button"
+                  aria-pressed={outcome === c.value}
+                  onClick={() => setOutcome(c.value)}
+                  className={cn(
+                    "rounded-chip border px-2.5 py-1 text-xs transition-colors duration-1 ease-out",
+                    focusRing,
+                    outcome === c.value
+                      ? "border-accent/50 bg-accent/15 text-accent-ink"
+                      : "border-hairline text-foreground hover:bg-surface-hover",
+                  )}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {visible.length === 0 ? (
+            <Panel>
+              <EmptyState text={t("runs.noMatch")} />
+            </Panel>
+          ) : (
+            visible.slice(0, shown).map((run, i) => <RunCard key={`${run.ts}-${i}`} run={run} t={t} />)
+          )}
+          {visible.length > shown ? (
+            <button
+              type="button"
+              onClick={() => setShown((n) => n + PAGE)}
+              className={cn("self-center rounded-chip px-3 py-1.5 text-sm text-accent-ink hover:bg-surface-hover", focusRing)}
+            >
+              {t("runs.showOlder", { n: visible.length - shown })}
+            </button>
+          ) : null}
+        </>
       )}
     </Screen>
   );

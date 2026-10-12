@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 ### Fixed
 
+- **Work › Runs can be searched and filtered, and long histories fold.** The list drew every run and every attempt
+  at once, with no way to look for one. It now has a search over the task and a filter by outcome (all, passed,
+  failed, paused) with a count on each; the earlier attempts of a run fold under the one that decided it; and twenty
+  runs are drawn before "Show older runs".
 - **A compacted coding conversation keeps the title it started with.** Once a conversation compacted, the Code
   screen's sidebar titled it "[earlier conversation, compacted] N earlier messages were removed…", so long
   conversations could not be told apart, and compaction's own note counted as a turn. The title now comes from the
