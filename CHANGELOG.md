@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 ### Fixed
 
+- **Connections and Usage in plain Portuguese.** The Connections tabs read "MCP", "Capacidades" and "OpenAPI", and
+  Usage spoke of a "Mix de rotas" of "único / fusão / cascata". They now say what each is ("Ferramentas externas
+  (MCP)", "Ferramentas", "APIs (OpenAPI)"; "Como os turnos rodaram": um modelo, vários modelos, pequeno primeiro).
+  Other languages are unchanged.
 - **A compacted coding conversation keeps the title it started with.** Once a conversation compacted, the Code
   screen's sidebar titled it "[earlier conversation, compacted] N earlier messages were removed…", so long
   conversations could not be told apart, and compaction's own note counted as a turn. The title now comes from the
