@@ -66,6 +66,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   English in every language, the second in the red of a failure; they now read "unverified" and a translated,
   amber "retire?". A notice above the fold says when learned skills wait for a decision, with a button to them, and a
   line of links reaches each of the screen's five sections.
+
+- **Connections and Usage in plain Portuguese.** The Connections tabs read "MCP", "Capacidades" and "OpenAPI", and
+  Usage spoke of a "Mix de rotas" of "único / fusão / cascata". They now say what each is ("Ferramentas externas
+  (MCP)", "Ferramentas", "APIs (OpenAPI)"; "Como os turnos rodaram": um modelo, vários modelos, pequeno primeiro).
+  Other languages are unchanged.
 - **A compacted coding conversation keeps the title it started with.** Once a conversation compacted, the Code
   screen's sidebar titled it "[earlier conversation, compacted] N earlier messages were removed…", so long
   conversations could not be told apart, and compaction's own note counted as a turn. The title now comes from the
