@@ -61,6 +61,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **An unsaved file's tab says so to a screen reader.** The editor marks a file that differs from disk with a dot,
   which has no name, so its tab announced exactly like a saved one; it is now named "a.py, unsaved changes". In
   Portuguese, the agent registry's "Id" field is called by what it does on the board ("Papel no quadro").
+
+- **Skills says what waits for you, in your language.** The learned-skills rows printed "tainted" and "retire?" in
+  English in every language, the second in the red of a failure; they now read "unverified" and a translated,
+  amber "retire?". A notice above the fold says when learned skills wait for a decision, with a button to them, and a
+  line of links reaches each of the screen's five sections.
 - **A compacted coding conversation keeps the title it started with.** Once a conversation compacted, the Code
   screen's sidebar titled it "[earlier conversation, compacted] N earlier messages were removed…", so long
   conversations could not be told apart, and compaction's own note counted as a turn. The title now comes from the
