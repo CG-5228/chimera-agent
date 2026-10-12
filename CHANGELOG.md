@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.66.0] - 2026-10-12
 ### Added
 
 - **Your own theme, on top of light and dark.** Settings › Appearance gains three rows: an accent colour (blue, cyan,
