@@ -24,6 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Memory and Schedule speak the app's language.** Memory kinds were printed as their identifiers ("episodic",
+  "semantic") in a monospace font on every row, and a schedule was described in English whatever the app was set to
+  ("every day at 07:00"). Kinds are now translated, and daily, weekday, weekly, hourly and every-N schedules are said
+  in the app's language ("Todo dia às 07:00"); anything rarer keeps the server's description rather than a guess.
+  The schedule's switch says "Active" or "Paused" beside it, and the memory screen's unverified count is amber
+  rather than red: it is something to review, not an error.
+
 - **The Code screen's right panel waits for a turn to describe.** Before the first turn it was a stack of empty
   panels taking a quarter of the window. It now appears when a turn starts and stays for a failed turn's tool calls;
   its edge tab still opens it at any time, and a panel the person hid stays hidden.

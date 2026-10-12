@@ -15,7 +15,9 @@ import { Badge, EmptyState, Panel, Screen, Spinner } from "@/components/ui/panel
 import { ErrorState } from "@/components/ui/async";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { useT } from "@/lib/i18n";
+import { describeCron } from "@/lib/cronText";
+import { useI18n } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { readWorkspace } from "@/lib/workspace";
 
 const PRESETS: { key: string; cron: string }[] = [
@@ -58,7 +60,7 @@ export function hostOf(url: string): string {
 }
 
 function AddSchedule() {
-  const t = useT();
+  const { t } = useI18n();
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [schedule, setSchedule] = useState("0 7 * * *");
@@ -172,7 +174,7 @@ function AddSchedule() {
 }
 
 export function Cron({ embedded = false }: { embedded?: boolean } = {}) {
-  const t = useT();
+  const { t, lang } = useI18n();
   const qc = useQueryClient();
   const jobs = useQuery({ queryKey: ["cron"], queryFn: getCron });
   // What the schedules answered. Fetched with the list rather than per row: a screen with six jobs
@@ -227,11 +229,18 @@ export function Cron({ embedded = false }: { embedded?: boolean } = {}) {
         ) : (
           jobs.data.map((j) => (
             <div key={j.id} className="group flex items-center gap-3 px-4 py-3">
-              <Switch
-                checked={j.enabled}
-                onChange={() => (j.enabled ? disable : enable).mutate(j.id)}
-                label={j.enabled ? t("cron.disable") : t("cron.enable")}
-              />
+              {/* The state in words beside the switch. A coloured pill alone said "on" only to
+                  someone who already knew which colour meant on. */}
+              <div className="flex w-20 shrink-0 items-center gap-2">
+                <Switch
+                  checked={j.enabled}
+                  onChange={() => (j.enabled ? disable : enable).mutate(j.id)}
+                  label={j.enabled ? t("cron.disable") : t("cron.enable")}
+                />
+                <span className={cn("text-xs", j.enabled ? "text-foreground" : "text-muted-foreground")}>
+                  {j.enabled ? t("cron.state.on") : t("cron.state.off")}
+                </span>
+              </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="truncate text-sm font-medium">{j.name}</span>
@@ -251,9 +260,11 @@ export function Cron({ embedded = false }: { embedded?: boolean } = {}) {
                 </div>
                 {/* Both fields are optional on the wire in practice: a desktop newer than its
                     server (or an older stored row) gets neither, and the row must still render. */}
-                {j.schedule_description && (
-                  <div className="mt-0.5 text-xs text-muted-foreground">
-                    {j.schedule_description}
+                {/* Said in the app's language for the common shapes; the server's (English) sentence
+                    only for a schedule this cannot put into words. */}
+                {(describeCron(j.schedule, t, lang) ?? j.schedule_description) && (
+                  <div className="mt-0.5 text-xs text-foreground">
+                    {describeCron(j.schedule, t, lang) ?? j.schedule_description}
                   </div>
                 )}
                 {(j.next_firings ?? []).length > 0 && (

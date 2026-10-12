@@ -8,6 +8,7 @@ import { MemoryFactRow } from "@/components/MemoryFactRow";
 import { MemoryTools } from "@/components/MemoryTools";
 import { ErrorState } from "@/components/ui/async";
 import { useNum, useT, type TFunc } from "@/lib/i18n";
+import { memoryKindLabel } from "@/lib/memoryKind";
 import type { MemoryLayers } from "@/lib/types";
 
 const inputCls = "field h-9 w-full px-3 text-sm";
@@ -15,8 +16,8 @@ const inputCls = "field h-9 w-full px-3 text-sm";
 type LayerRow = MemoryLayers["layers"][number];
 
 /** A compact stat tile (label + value), mirroring the Usage screen's tile. */
-function Tile({ label, value, tone }: { label: string; value: string; tone?: "ok" | "bad" }) {
-  const color = tone === "ok" ? "text-ok" : tone === "bad" ? "text-bad" : "text-foreground";
+function Tile({ label, value, tone }: { label: string; value: string; tone?: "ok" | "warn" }) {
+  const color = tone === "ok" ? "text-ok-foreground" : tone === "warn" ? "text-warn-foreground" : "text-foreground";
   return (
     <div className="surface flex flex-col gap-1 p-4">
       <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -34,7 +35,7 @@ function LayerBar({ row, max, t }: { row: LayerRow; max: number; t: TFunc }) {
   return (
     <div className="px-4 py-3">
       <div className="flex items-center justify-between gap-2">
-        <span className="truncate font-mono text-xs text-foreground">{row.kind}</span>
+        <span className="truncate text-xs font-medium text-foreground">{memoryKindLabel(t, row.kind)}</span>
         <span className="shrink-0 font-mono text-xs text-muted-foreground">
           {num(row.count)} · {t("memory.layers.clean")} {num(row.clean)} ·{" "}
           {t("memory.layers.unverified")} {num(row.tainted)}
@@ -66,7 +67,9 @@ function LayersPanel({ t }: { t: TFunc }) {
           <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3">
             <Tile label={t("memory.layers.total")} value={num(data.total)} />
             <Tile label={t("memory.layers.clean")} value={num(data.clean)} tone="ok" />
-            <Tile label={t("memory.layers.unverified")} value={num(data.tainted)} tone="bad" />
+            {/* Amber, not red: an unverified fact is one to review, not an error. Red here read as
+                "something broke" on a screen where nothing had. */}
+            <Tile label={t("memory.layers.unverified")} value={num(data.tainted)} tone="warn" />
           </div>
           <div className="px-4 pb-1 pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {t("memory.layers.byKind")}
