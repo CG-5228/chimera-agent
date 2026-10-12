@@ -71,6 +71,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   Usage spoke of a "Mix de rotas" of "único / fusão / cascata". They now say what each is ("Ferramentas externas
   (MCP)", "Ferramentas", "APIs (OpenAPI)"; "Como os turnos rodaram": um modelo, vários modelos, pequeno primeiro).
   Other languages are unchanged.
+
+- **Decisions asks first and explains later.** The one thing on the screen that asks something of the person, the
+  label on a recent answer, sat last, under every group's calibration figures. A line at the top now says how many
+  answers wait, the recent answers come first among the panels, and the calibration, review bands and predicted
+  against actual fold into "Technical details".
 - **A compacted coding conversation keeps the title it started with.** Once a conversation compacted, the Code
   screen's sidebar titled it "[earlier conversation, compacted] N earlier messages were removed…", so long
   conversations could not be told apart, and compaction's own note counted as a turn. The title now comes from the

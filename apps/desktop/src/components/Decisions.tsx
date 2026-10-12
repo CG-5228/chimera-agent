@@ -48,8 +48,27 @@ export function Decisions({ embedded = false }: { embedded?: boolean } = {}) {
     );
   }
   const data = q.data;
+  // The one thing on this screen that asks something of the person is the label on a recent answer —
+  // and it sat last, under every group's calibration figures. It now comes first among the panels,
+  // with a line at the top saying how many wait; the figures fold into "technical details".
+  const waiting = data.recent.filter((r) => r.label === null || r.label === undefined).length;
   return (
     <Screen title={title} icon={icon} embedded={embedded}>
+      {waiting > 0 ? (
+        <div className="flex items-center gap-3 rounded-xl2 border border-warn/40 bg-warn/10 px-4 py-2.5">
+          <span className="flex-1 text-sm text-warn-foreground">{t("decisions.waiting", { n: waiting })}</span>
+          <button
+            type="button"
+            onClick={() => document.getElementById("decisions-recent")?.scrollIntoView({ block: "start" })}
+            className="rounded-chip border border-warn/60 px-3 py-1 text-xs font-medium text-warn-foreground hover:bg-warn/15"
+          >
+            {t("decisions.goLabel")}
+          </button>
+        </div>
+      ) : null}
+      <div id="decisions-recent" className="scroll-mt-4">
+        <RecentPanel rows={data.recent} t={t} />
+      </div>
       <Panel title={t("decisions.points")}>
         {data.specs.length === 0 ? (
           <EmptyState text={t("decisions.noPoints")} />
@@ -71,9 +90,15 @@ export function Decisions({ embedded = false }: { embedded?: boolean } = {}) {
           <EmptyState text={t("decisions.empty")} />
         </Panel>
       ) : (
-        data.groups.map((g) => <GroupPanel key={`${g.decision}/${g.prompt_hash}/${g.resolved_model}`} group={g} data={data} t={t} />)
+        <details className="surface">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-medium">{t("decisions.technical")}</summary>
+          <div className="space-y-4 px-2 pb-3">
+            {data.groups.map((g) => (
+              <GroupPanel key={`${g.decision}/${g.prompt_hash}/${g.resolved_model}`} group={g} data={data} t={t} />
+            ))}
+          </div>
+        </details>
       )}
-      <RecentPanel rows={data.recent} t={t} />
     </Screen>
   );
 }
