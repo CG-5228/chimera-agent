@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 ### Fixed
 
+- **Knowledge and Automation tabs have addresses, and Profile says where a fact came from.** Like Settings, each
+  tab is now in the route (`#/knowledge?tab=skills`, `#/automation?tab=agents`), so it can be linked to, survives a
+  reload and answers the back button. Profile printed each persona fact's source id ("chat", "extracted") and the
+  store's "tainted" under it, in English in every language; it now says "You said it in a conversation" or "Learned
+  from a conversation", marks an unverified fact with Memory's own badge, and links to Memory to correct or forget.
 - **A compacted coding conversation keeps the title it started with.** Once a conversation compacted, the Code
   screen's sidebar titled it "[earlier conversation, compacted] N earlier messages were removed…", so long
   conversations could not be told apart, and compaction's own note counted as a turn. The title now comes from the

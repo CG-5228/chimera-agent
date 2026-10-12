@@ -7,7 +7,15 @@ import { Skills } from "@/components/Skills";
 import { Tabs, TabPanel } from "@/components/ui/tabs";
 import { useT } from "@/lib/i18n";
 
-type Tab = "memory" | "profile" | "skills";
+export type KnowledgeTab = "memory" | "profile" | "skills";
+
+const KNOWLEDGE_TABS: readonly KnowledgeTab[] = ["memory", "profile", "skills"];
+
+/** A `?tab=` value from the URL, or the first tab for anything else — a stale link lands on the
+ *  screen rather than on nothing. Same contract as `settingsTab`. */
+export function knowledgeTab(value: string | null | undefined): KnowledgeTab {
+  return KNOWLEDGE_TABS.find((tab) => tab === value) ?? "memory";
+}
 
 /**
  * What the agent knows.
@@ -19,10 +27,18 @@ type Tab = "memory" | "profile" | "skills";
  *
  * Profile is new here: `/api/memory/profile` had existed with nothing reading it.
  */
-export function Knowledge() {
+export function Knowledge({
+  tab: routeTab,
+  onTabChange,
+}: { tab?: KnowledgeTab; onTabChange?: (tab: KnowledgeTab) => void } = {}) {
   const t = useT();
   const id = useId();
-  const [tab, setTab] = useState<Tab>("memory");
+  // Owned by the route when the app passes one (`#/knowledge?tab=skills`), so a tab can be linked
+  // to, survives a reload and answers the back button; without it — the tests, an embedded copy —
+  // the screen keeps its own state as before.
+  const [ownTab, setOwnTab] = useState<KnowledgeTab>("memory");
+  const tab = onTabChange ? (routeTab ?? "memory") : ownTab;
+  const setTab = onTabChange ?? setOwnTab;
 
   const items = [
     { value: "memory" as const, label: t("nav.memory") },
@@ -41,7 +57,7 @@ export function Knowledge() {
         <div className="mx-auto max-w-3xl px-6 py-6">
           <TabPanel tabsId={id} value={tab}>
             {tab === "memory" && <Memory embedded />}
-            {tab === "profile" && <Profile />}
+            {tab === "profile" && <Profile onOpenMemory={() => setTab("memory")} />}
             {tab === "skills" && <Skills embedded />}
           </TabPanel>
         </div>

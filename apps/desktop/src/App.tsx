@@ -3,8 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { IconRail, type View } from "@/components/IconRail";
 import { useRoute } from "@/lib/router";
 import { Settings, settingsTab } from "@/components/Settings";
-import { Knowledge } from "@/components/Knowledge";
-import { Automation } from "@/components/Automation";
+import { Knowledge, knowledgeTab } from "@/components/Knowledge";
+import { Automation, automationTab } from "@/components/Automation";
 import { Code } from "@/components/Code";
 import { Work } from "@/components/Work";
 import { Maturity } from "@/components/Maturity";
@@ -372,8 +372,20 @@ function Workspace() {
           ) : undefined
         }
       >
-        {view === "knowledge" && <Knowledge />}
-        {view === "automation" && <Automation />}
+        {/* Each tab has an address, like Settings': the first tab is the bare screen, so the common
+            URL stays readable, and switching tabs replaces rather than pushes. */}
+        {view === "knowledge" && (
+          <Knowledge
+            tab={knowledgeTab(route.params.get("tab"))}
+            onTabChange={(next) => setParams(next === "memory" ? {} : { tab: next })}
+          />
+        )}
+        {view === "automation" && (
+          <Automation
+            tab={automationTab(route.params.get("tab"))}
+            onTabChange={(next) => setParams(next === "schedule" ? {} : { tab: next })}
+          />
+        )}
         {view === "work" && <Work />}
         {view === "code" && <Code />}
         {view === "edit" && (
