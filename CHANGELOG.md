@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 ### Fixed
 
+- **Work › Git asks before discarding on the page, and names what it does.** Discarding changes asked through the
+  browser's `confirm` box, which cannot say which files and does not look like the app; the question now sits under
+  the button, red, with Cancel first. Each file's checkbox has a name ("Include src/a.py in the commit"); it had
+  none, and an empty diff no longer claims "this run changed nothing" about a working-tree file. In Portuguese, "Preparados" and "Não rastreados" read "Vão no próximo commit"
+  and "Novos (fora do git)".
 - **A compacted coding conversation keeps the title it started with.** Once a conversation compacted, the Code
   screen's sidebar titled it "[earlier conversation, compacted] N earlier messages were removed…", so long
   conversations could not be told apart, and compaction's own note counted as a turn. The title now comes from the
