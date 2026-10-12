@@ -98,9 +98,12 @@ function countMatches(pattern: RegExp): { total: number; where: string[] } {
 
 describe("typography", () => {
   it("uses the named scale, never a pixel value", () => {
-    // xs 11 · sm 13 · base 15 · lg 18 · xl 22 (tailwind.config.js). Five names cover the whole app;
-    // a sixth size is a design decision, not something to smuggle in as an arbitrary utility.
-    const { total, where } = countMatches(/\btext-\[\d+px\]/g);
+    // xs 11 · sm 13 · base 15 · lg 18 · xl 22 (the `@theme` block in index.css). Five names cover the
+    // whole app; a sixth size is a design decision, not something to smuggle in as an arbitrary utility.
+    //
+    // The pattern took digits only, so `text-[12.5px]` walked past it: two of them sat in the Code
+    // screen's viewer while this rule read green. A decimal, and the other length units, count too.
+    const { total, where } = countMatches(/\btext-\[[\d.]+(?:px|rem|em)\]/g);
     expect(total, `arbitrary font sizes in: ${where.join(", ")}`).toBe(0);
   });
 });

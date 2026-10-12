@@ -377,7 +377,7 @@ function Viewer({
       {minimized ? null : editing ? (
         <div className="flex min-h-0 flex-1 flex-col">
           <textarea
-            className="min-h-0 flex-1 resize-none bg-transparent p-4 font-mono text-[12.5px] leading-relaxed text-foreground outline-hidden"
+            className="min-h-0 flex-1 resize-none bg-transparent p-4 font-mono text-sm leading-relaxed text-foreground outline-hidden"
             value={draft}
             spellCheck={false}
             onChange={(e) => setDraft(e.target.value)}
@@ -429,7 +429,7 @@ function Viewer({
           ) : (
             <pre
               className={cn(
-                "p-4 text-[12.5px] leading-relaxed",
+                "p-4 text-sm leading-relaxed",
                 isProsePath(path ?? "") ? "whitespace-pre-wrap break-words" : "overflow-x-auto",
               )}
             >
