@@ -5,6 +5,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Added
+
+- **Your own theme, on top of light and dark.** Settings › Appearance gains three rows: an accent colour (blue, cyan,
+  green, amber, rose or graphite), the tint of the surfaces (navy, neutral or warm) and a high-contrast option. Each
+  default is the shipped theme exactly, and every one of the 72 combinations is checked by a test that computes its
+  contrast from `index.css`: text at 4.5:1 on the page, on a card and on its own badge wash, and the text on a filled
+  accent button at 3:1.
+
+### Changed
+
+- **The rail names its destinations, and the composer starts as one line.** The desktop app's left rail now writes
+  each destination's name under its icon; it was a column of five icons named only on hover. The Code screen's
+  pickers (who runs the turn, cost profile, model, style) start as their line of chips, and the whole line opens
+  them; they used to take four rows above the message box. Armed "Fuse" and "Plan first" read as pressed outlines,
+  so Send is the one filled button in the row, and the "no OS sandbox" note is amber rather than red: it is a
+  condition to know, not a failure.
+
 ### Fixed
 
 - **Memory and Schedule speak the app's language.** Memory kinds were printed as their identifiers ("episodic",
@@ -13,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   in the app's language ("Todo dia às 07:00"); anything rarer keeps the server's description rather than a guess.
   The schedule's switch says "Active" or "Paused" beside it, and the memory screen's unverified count is amber
   rather than red: it is something to review, not an error.
+
+- **The Code screen's right panel waits for a turn to describe.** Before the first turn it was a stack of empty
+  panels taking a quarter of the window. It now appears when a turn starts and stays for a failed turn's tool calls;
+  its edge tab still opens it at any time, and a panel the person hid stays hidden.
 - **A compacted coding conversation keeps the title it started with.** Once a conversation compacted, the Code
   screen's sidebar titled it "[earlier conversation, compacted] N earlier messages were removed…", so long
   conversations could not be told apart, and compaction's own note counted as a turn. The title now comes from the

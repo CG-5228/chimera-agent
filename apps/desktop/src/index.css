@@ -336,6 +336,173 @@
       inset 0 1px 0 rgba(255, 255, 255, 0.5);
   }
 
+  /* ── Your own theme (Settings › Appearance): accent, surface tint and contrast ─────────────────────
+     Three attributes on <html>, stamped by the inline script before paint like the others, and each
+     default stamps nothing — so these rules never match for someone who did not choose, and light and
+     dark stay exactly the two themes above.
+
+     Every block is written once per theme. The dark selector says `not([data-theme='light'])`
+     rather than leaning on the root alone: root-plus-accent has the same specificity as the light
+     block and comes later, so it would paint the DARK lightness over the light theme. (No literal
+     root selector in this comment: the contrast tests find blocks by that text.)
+
+     The inks were picked by computing contrast, not by eye, and against the hardest ground each one
+     meets: the page of all three tints and its own badge wash. `design/own-theme-is-readable.test.ts`
+     recomputes every theme × tint × contrast × accent combination, so a value edited here is checked.
+     `--accent-foreground` is the text ON an accent fill: navy wherever navy reads better than white,
+     which for the light hues (cyan, green, amber) is by a factor of three or more. */
+  :root:not([data-theme='light'])[data-accent='cyan'] {
+    --accent: 189 85% 62%;
+    --accent-ink: 189 85% 72%;
+    --accent2: 170 80% 52%;
+    --ring: 189 85% 62%;
+    --accent-foreground: 222 47% 11%;
+  }
+  :root:not([data-theme='light'])[data-accent='green'] {
+    --accent: 152 60% 62%;
+    --accent-ink: 152 60% 70%;
+    --accent2: 172 66% 50%;
+    --ring: 152 60% 62%;
+    --accent-foreground: 222 47% 11%;
+  }
+  :root:not([data-theme='light'])[data-accent='amber'] {
+    --accent: 38 92% 62%;
+    --accent-ink: 38 92% 70%;
+    --accent2: 22 92% 60%;
+    --ring: 38 92% 62%;
+    --accent-foreground: 222 47% 11%;
+  }
+  :root:not([data-theme='light'])[data-accent='rose'] {
+    --accent: 340 75% 62%;
+    --accent-ink: 340 75% 74%;
+    --accent2: 355 80% 66%;
+    --ring: 340 75% 62%;
+    --accent-foreground: 222 47% 11%;
+  }
+  :root:not([data-theme='light'])[data-accent='graphite'] {
+    --accent: 220 12% 66%;
+    --accent-ink: 220 12% 76%;
+    --accent2: 210 18% 60%;
+    --ring: 220 12% 66%;
+    --accent-foreground: 222 47% 11%;
+  }
+  :root[data-theme='light'][data-accent='cyan'] {
+    --accent: 189 85% 52%;
+    --accent-ink: 189 85% 26%;
+    --accent2: 170 80% 38%;
+    --ring: 189 85% 52%;
+    --accent-foreground: 222 47% 11%;
+  }
+  :root[data-theme='light'][data-accent='green'] {
+    --accent: 152 60% 52%;
+    --accent-ink: 152 60% 26%;
+    --accent2: 172 66% 36%;
+    --ring: 152 60% 52%;
+    --accent-foreground: 222 47% 11%;
+  }
+  :root[data-theme='light'][data-accent='amber'] {
+    --accent: 38 92% 46%;
+    --accent-ink: 38 92% 26%;
+    --accent2: 22 90% 48%;
+    --ring: 38 92% 46%;
+    --accent-foreground: 222 47% 11%;
+  }
+  :root[data-theme='light'][data-accent='rose'] {
+    --accent: 340 75% 52%;
+    --accent-ink: 340 75% 38%;
+    --accent2: 355 75% 50%;
+    --ring: 340 75% 52%;
+    --accent-foreground: 0 0% 100%;
+  }
+  :root[data-theme='light'][data-accent='graphite'] {
+    --accent: 220 12% 46%;
+    --accent-ink: 220 12% 36%;
+    --accent2: 210 16% 42%;
+    --ring: 220 12% 46%;
+    --accent-foreground: 0 0% 100%;
+  }
+
+  /* Surface tint. Navy is the original and stamps nothing. Neutral drops the saturation to a few
+     percent; warm turns the hue to a paper-like amber. Lightness is kept, so every ink measured on
+     navy keeps its margin. */
+  :root:not([data-theme='light'])[data-tint='neutral'] {
+    --background: 220 10% 8%;
+    --card: 220 8% 13%;
+    --muted: 220 8% 18%;
+    --border: 220 7% 24%;
+    --input: 220 10% 9%;
+    --surface-2: 220 8% 16%;
+    --surface-hover: 220 7% 21%;
+    --scrim: 220 10% 4% / 0.6;
+    --primary-foreground: 220 12% 10%;
+  }
+  :root:not([data-theme='light'])[data-tint='warm'] {
+    --background: 30 14% 8%;
+    --card: 30 10% 13%;
+    --muted: 30 9% 18%;
+    --border: 30 8% 24%;
+    --input: 30 12% 9%;
+    --surface-2: 30 9% 16%;
+    --surface-hover: 30 8% 21%;
+    --scrim: 30 14% 4% / 0.6;
+    --primary-foreground: 30 14% 10%;
+  }
+  :root[data-theme='light'][data-tint='neutral'] {
+    --background: 220 14% 96%;
+    --muted: 220 12% 92%;
+    --border: 220 10% 86%;
+    --input: 220 14% 97%;
+    --surface-2: 220 14% 97%;
+    --surface-hover: 220 12% 93%;
+  }
+  :root[data-theme='light'][data-tint='warm'] {
+    --background: 36 30% 96%;
+    --muted: 36 22% 91%;
+    --border: 36 16% 85%;
+    --input: 36 30% 97%;
+    --surface-2: 36 28% 97%;
+    --surface-hover: 36 22% 93%;
+  }
+
+  /* High contrast: secondary text closer to primary, primary closer to pure, and every line between
+     panels at roughly three times its alpha. Hue-neutral, so it composes with any tint. */
+  :root:not([data-theme='light'])[data-contrast='high'] {
+    --foreground: 210 25% 96%;
+    --card-foreground: 210 25% 96%;
+    --muted-foreground: 214 16% 76%;
+    --hairline: 210 20% 100% / 0.16;
+    --border: 220 8% 38%;
+  }
+  :root[data-theme='light'][data-contrast='high'] {
+    --foreground: 222 50% 8%;
+    --card-foreground: 222 50% 8%;
+    --muted-foreground: 222 16% 28%;
+    --hairline: 222 30% 12% / 0.24;
+    --border: 220 10% 66%;
+  }
+
+  /* The swatches the accent row draws. Colours live here, in CSS, with every other colour: the
+     design gate forbids literals in components. Each shows that accent at a lightness between the
+     two themes', since the row is the same in both. */
+  .accent-swatch[data-swatch='blue'] {
+    background: hsl(217 91% 56%);
+  }
+  .accent-swatch[data-swatch='cyan'] {
+    background: hsl(189 85% 50%);
+  }
+  .accent-swatch[data-swatch='green'] {
+    background: hsl(152 60% 48%);
+  }
+  .accent-swatch[data-swatch='amber'] {
+    background: hsl(38 92% 52%);
+  }
+  .accent-swatch[data-swatch='rose'] {
+    background: hsl(340 75% 56%);
+  }
+  .accent-swatch[data-swatch='graphite'] {
+    background: hsl(220 12% 54%);
+  }
+
   /* ── Text size and fonts (Settings › Appearance). Each is stamped on <html> by the inline script in
      index.html, and the default stamps nothing — so none of these rules matches for someone who never
      chose, and their page is the one they had before the rows existed.
