@@ -118,3 +118,30 @@ describe("Decisions — what the typed decisions answered", () => {
     expect(screen.getByText("No answers yet.")).toBeInTheDocument();
   });
 });
+
+describe("Decisions — what asks something of you comes first", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("says how many recent answers wait for a label, and puts them above the figures", async () => {
+    vi.mocked(getDecisions).mockResolvedValue({ ...DATA, alerts: [] } as never);
+    renderWithProviders(<Decisions />);
+    // One of the two recent rows is unlabelled.
+    expect(await screen.findByText("1 recent answer(s) wait for you to say whether they were right.")).toBeInTheDocument();
+    const recent = screen.getByText("ls -la");
+    const technical = screen.getByText(/^Technical details/);
+    // The labels come before the calibration figures in the page, and the figures are folded.
+    expect(recent.compareDocumentPosition(technical) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect((technical.closest("details") as HTMLDetailsElement).open).toBe(false);
+  });
+
+  it("says nothing at the top once every recent answer is labelled", async () => {
+    vi.mocked(getDecisions).mockResolvedValue({
+      ...DATA,
+      alerts: [],
+      recent: DATA.recent.map((r) => ({ ...r, label: 0 })),
+    } as never);
+    renderWithProviders(<Decisions />);
+    await screen.findByText("ls -la");
+    expect(screen.queryByText(/wait for you to say/)).not.toBeInTheDocument();
+  });
+});
