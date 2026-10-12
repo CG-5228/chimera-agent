@@ -23,20 +23,28 @@ export function Tabs<T extends string>({
   value,
   onChange,
   className,
+  orientation = "horizontal",
   "aria-label": ariaLabel,
 }: {
   items: readonly TabItem<T>[];
   value: T;
   onChange: (next: T) => void;
   className?: string;
+  /** Vertical is a column from `lg` up and the usual strip below it, for a screen whose sections
+   *  outnumber what a strip shows comfortably. Either arrow axis moves the selection then, since
+   *  which one is "along the strip" depends on the window's width. */
+  orientation?: "horizontal" | "vertical";
   "aria-label": string;
 }) {
+  const vertical = orientation === "vertical";
   const id = useId();
   const refs = useRef(new Map<T, HTMLButtonElement>());
 
   const onKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) => {
-      const keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
+      const keys = vertical
+        ? ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"]
+        : ["ArrowLeft", "ArrowRight", "Home", "End"];
       if (!keys.includes(e.key)) return;
       e.preventDefault();
       const i = items.findIndex((t) => t.value === value);
@@ -47,22 +55,27 @@ export function Tabs<T extends string>({
             ? items.length - 1
             : // Wraps: arrowing past the last tab returns to the first, which is what the pattern
               // specifies and what people try.
-              (i + (e.key === "ArrowRight" ? 1 : -1) + items.length) % items.length;
+              (i + (e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
       const target = items[next];
       onChange(target.value);
       // Selection follows focus here, so move focus too — otherwise the arrow key changes the panel
       // while the ring stays behind on the old tab.
       refs.current.get(target.value)?.focus();
     },
-    [items, value, onChange],
+    [items, value, onChange, vertical],
   );
 
   return (
     <div
       role="tablist"
       aria-label={ariaLabel}
+      aria-orientation={vertical ? "vertical" : undefined}
       onKeyDown={onKeyDown}
-      className={cn("flex items-center gap-1 border-b border-hairline", className)}
+      className={cn(
+        "flex items-center gap-1 border-b border-hairline",
+        vertical && "lg:flex-col lg:items-stretch lg:gap-0.5 lg:border-b-0 lg:border-r",
+        className,
+      )}
     >
       {items.map((tab) => {
         const selected = tab.value === value;
@@ -82,6 +95,7 @@ export function Tabs<T extends string>({
             onClick={() => onChange(tab.value)}
             className={cn(
               "relative -mb-px px-3 py-2 text-sm transition-colors duration-1 ease-out",
+              vertical && "lg:-mb-0 lg:-mr-px lg:rounded-l-md lg:text-left",
               focusRing,
               selected
                 ? "text-foreground"
@@ -93,7 +107,13 @@ export function Tabs<T extends string>({
               <span className="ml-1.5 text-xs text-muted-foreground">{tab.count}</span>
             )}
             {selected && (
-              <span aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-accent-grad" />
+              <span
+                aria-hidden
+                className={cn(
+                  "absolute inset-x-0 bottom-0 h-px bg-accent-grad",
+                  vertical && "lg:inset-x-auto lg:inset-y-1 lg:right-0 lg:h-auto lg:w-0.5",
+                )}
+              />
             )}
           </button>
         );

@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Changed
+
+- **Settings reads as a document with a table of contents.** Its sections sit in a column beside the content on a
+  wide window (the strip below it), Appearance is a section of its own instead of the first card of General, and
+  the rows most people never change (key pools, memory, bots, cache and sandbox, MCP, automation, experiments, the
+  Claude bridge, storage, diagnostics, server, sharing) fold under "Advanced", every one still there. The card, row
+  and toggle the screen is built from moved to `components/settings/rows.tsx` so other screens can share them.
+
 ### Added
 
 - **Your own theme, on top of light and dark.** Settings › Appearance gains three rows: an accent colour (blue, cyan,
