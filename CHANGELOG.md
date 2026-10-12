@@ -38,6 +38,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   The schedule's switch says "Active" or "Paused" beside it, and the memory screen's unverified count is amber
   rather than red: it is something to review, not an error.
 
+- **Work › Runs can be searched and filtered, and long histories fold.** The list drew every run and every attempt
+  at once, with no way to look for one. It now has a search over the task and a filter by outcome (all, passed,
+  failed, paused) with a count on each; the earlier attempts of a run fold under the one that decided it; and twenty
+  runs are drawn before "Show older runs".
+
 - **The Code screen's right panel waits for a turn to describe.** Before the first turn it was a stack of empty
   panels taking a quarter of the window. It now appears when a turn starts and stays for a failed turn's tool calls;
   its edge tab still opens it at any time, and a panel the person hid stays hidden.
