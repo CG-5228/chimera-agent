@@ -63,6 +63,7 @@ function RailButton({
   icon: Icon,
   igniteIndex,
   isPage = true,
+  showLabel = true,
 }: {
   active: boolean;
   label: string;
@@ -72,6 +73,8 @@ function RailButton({
   igniteIndex?: number;
   /** False for controls that don't navigate (the theme toggle), so aria-current stays meaningful. */
   isPage?: boolean;
+  /** The name under the icon. Off only for the theme toggle, whose icon already says which way it goes. */
+  showLabel?: boolean;
 }) {
   return (
     // A real tooltip rather than `title=`: the native one never appears for a keyboard user and has
@@ -89,7 +92,11 @@ function RailButton({
           style: { "--i": igniteIndex } as CSSProperties,
         })}
         className={cn(
-          "relative flex h-11 w-11 items-center justify-center rounded-xl2",
+          // A name under every destination. Five icons were five positions to memorise, and the
+          // tooltip that named them appeared only on hover — recognition beats recall (Jakob, and
+          // every desktop app the person already uses labels its rail).
+          "relative flex flex-col items-center justify-center gap-1 rounded-xl2",
+          showLabel ? "w-16 py-1.5" : "h-11 w-11",
           "transition-all duration-1 ease-out",
           // The app's primary navigation had no focus indicator at all: a keyboard user could tab
           // through fifteen destinations with nothing on screen telling them where they were.
@@ -100,6 +107,14 @@ function RailButton({
         )}
       >
         <Icon className="h-5 w-5" />
+        {showLabel ? (
+          // Two lines at most: "Automatización" and "Konfiguration" do not fit one at this width,
+          // and a label cut to "Autom…" names nothing. `aria-hidden`: the button already carries
+          // the same text as its accessible name, and a screen reader would read it twice.
+          <span aria-hidden className="line-clamp-2 max-w-full break-words px-0.5 text-center text-xs leading-tight">
+            {label}
+          </span>
+        ) : null}
       </button>
     </Tooltip>
   );
@@ -123,7 +138,7 @@ export function IconRail({
   return (
     <div
       {...(ignite && { "data-ignite": "rail" })}
-      className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-hairline bg-card/40 py-3"
+      className="flex w-20 shrink-0 flex-col items-center gap-1 border-r border-hairline bg-card/40 py-3"
     >
       <BrandMark className="mb-2 h-8 w-8" glow {...(ignite && { "data-ignite": "mark" })} />
       <nav className="flex flex-1 flex-col items-center gap-1.5">
@@ -146,6 +161,7 @@ export function IconRail({
           label={dark ? t("theme.light") : t("theme.dark")}
           icon={dark ? Sun : Moon}
           onClick={onToggleTheme}
+          showLabel={false}
         />
         <RailButton
           active={view === "settings"}

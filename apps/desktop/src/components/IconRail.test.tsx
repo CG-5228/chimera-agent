@@ -55,6 +55,19 @@ describe("IconRail", () => {
     );
   });
 
+  it("writes each destination's name under its icon, not only in a tooltip", () => {
+    renderRail();
+    // A tooltip appears on hover; a name on screen is read at a glance. Five icons with no words were
+    // five positions to memorise.
+    const nav = screen.getByRole("navigation");
+    for (const button of Array.from(nav.querySelectorAll("button"))) {
+      const name = button.getAttribute("aria-label") ?? "";
+      expect(name).not.toBe("");
+      expect(button).toHaveTextContent(name);
+    }
+    expect(screen.getByRole("button", { name: /settings/i })).toHaveTextContent(/settings/i);
+  });
+
   it("does not mark the theme toggle as a page", () => {
     renderRail();
     // It is a control, not a destination — aria-current on it would mean "you are here" about a

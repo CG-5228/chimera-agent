@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { AgentStatusBar } from "@/components/shell/AgentStatusBar";
 import { EdgeTab, useRegionEnter } from "@/components/shell/RegionToggle";
@@ -6,6 +6,7 @@ import { Splitter } from "@/components/shell/Splitter";
 import { Dock, LayoutDnd } from "@/components/shell/Dock";
 import { MaximizedPanel, useEscapeRestores } from "@/components/shell/Maximize";
 import { focusRing } from "@/components/ui/focus";
+import { useAgent } from "@/lib/agent-context";
 import { useT } from "@/lib/i18n";
 import { useLayout } from "@/lib/layout/context";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,7 @@ export function AppShell({
   viewKey,
   viewLabel,
   onOpenUsage,
+  inspectorFollowsAgent = false,
 }: {
   rail: ReactNode;
   context?: ReactNode;
@@ -43,12 +45,26 @@ export function AppShell({
   viewKey: string;
   viewLabel: string;
   onOpenUsage?: () => void;
+  /** The inspector describes the agent's turn, so it stands aside while there is no turn to describe:
+   *  nothing running and no tool calls to show. A tab on the edge brings it back. */
+  inspectorFollowsAgent?: boolean;
 }) {
   const t = useT();
   const { layout } = useLayout();
   const showRail = layout.regions.rail.visible;
   // The inspector is the right region wherever a screen has one; a screen without one shows no tab.
-  const showInspector = layout.regions.right.visible;
+  const agent = useAgent();
+  // Quiet: the screen has a turn to describe and there is none yet. A failed turn keeps its tool
+  // calls, so the panel stays for it — the moment someone wants to see what ran is right after.
+  const quiet = inspectorFollowsAgent && agent.status === "idle" && agent.tools.length === 0;
+  // Opened on purpose while quiet, it stays until the next turn begins and then follows the agent
+  // again: a person who looked once has not asked to keep a half-empty column for good.
+  const [peek, setPeek] = useState(false);
+  useEffect(() => {
+    if (!quiet) setPeek(false);
+  }, [quiet]);
+  const regionVisible = layout.regions.right.visible;
+  const showInspector = regionVisible && (!quiet || peek);
   const inspectorEnter = useRegionEnter(showInspector, "right");
   // A screen's own left sidebar (the editor's) follows the left region like the conversation list
   // does (phase 6). The Code screen draws its list itself and passes no context, so no tab doubles.
@@ -146,8 +162,9 @@ export function AppShell({
               </div>
             </>
           ) : (
-            // The agent's state does not go with it: the status bar below keeps showing it.
-            <EdgeTab side="right" />
+            // The agent's state does not go with it: the status bar below keeps showing it. Quiet,
+            // the same tab peeks instead of changing the layout the person chose.
+            <EdgeTab side="right" onShow={regionVisible ? () => setPeek(true) : undefined} />
           ))}
       </div>
 
