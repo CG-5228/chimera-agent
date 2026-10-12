@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 ### Fixed
 
+- **"Was it worth it?" says when it could not ask.** A failed request rendered exactly like "no runs yet", which on a
+  screen about evidence reads as a finding; it now shows the error with a retry, and a spinner while loading. The
+  table is set at body size, and the stray divider from the panel's old place under the conversation is gone. The
+  panel still ranks nothing.
 - **A compacted coding conversation keeps the title it started with.** Once a conversation compacted, the Code
   screen's sidebar titled it "[earlier conversation, compacted] N earlier messages were removed…", so long
   conversations could not be told apart, and compaction's own note counted as a turn. The title now comes from the

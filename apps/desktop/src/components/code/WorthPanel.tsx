@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Scale } from "lucide-react";
 import { getWorth, type ProfileWorth } from "@/lib/api";
 import { DelegationSavings } from "@/components/orchestration/DelegationSavings";
+import { ErrorState } from "@/components/ui/async";
+import { Spinner } from "@/components/ui/panel";
 import { useT, type TFunc } from "@/lib/i18n";
 
 /** A group's cost, or the honest absence of one.
@@ -70,9 +72,25 @@ export function WorthPanel({ workspace }: { workspace?: string } = {}) {
   // "was this configuration worth it HERE", which is the only question this panel is asked.
   const worth = useQuery({ queryKey: ["worth", workspace], queryFn: () => getWorth(workspace) });
 
+  // A failed request and a loading one each say so. Both used to fall through to "no runs yet",
+  // which on a screen about evidence is the one wrong thing to say: it reads as a finding.
+  if (worth.isError || worth.isLoading) {
+    return (
+      <div className="space-y-1.5 p-3">
+        <div className="flex items-center gap-2 text-accent">
+          <Scale className="h-4 w-4" />
+          <h2 className="text-sm font-semibold text-foreground">{t("code.worth.title")}</h2>
+        </div>
+        {worth.isError ? <ErrorState error={worth.error} onRetry={() => void worth.refetch()} /> : <Spinner />}
+      </div>
+    );
+  }
+
   if (!worth.data || worth.data.total_runs === 0) {
     return (
-      <div className="space-y-1.5 border-t border-hairline p-3">
+      // No top border: it was the divider from when this panel sat under the conversation on the
+      // Code screen. On its own tab it drew a line above nothing.
+      <div className="space-y-1.5 p-3">
         <div className="flex items-center gap-2 text-accent">
           <Scale className="h-4 w-4" />
           <h2 className="text-sm font-semibold text-foreground">{t("code.worth.title")}</h2>
@@ -87,13 +105,15 @@ export function WorthPanel({ workspace }: { workspace?: string } = {}) {
 
   const { profiles, any_readable, readable_n } = worth.data;
   return (
-    <div className="space-y-2 border-t border-hairline p-3">
+    <div className="space-y-2 p-3">
       <div className="flex items-center gap-2 text-accent">
         <Scale className="h-4 w-4" />
         <h2 className="text-sm font-semibold text-foreground">{t("code.worth.title")}</h2>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-xs">
+        {/* The numbers are the content here, so they are set at body size; at 11px a table of
+            four-decimal costs was the smallest text on the screen carrying the most weight. */}
+        <table className="w-full text-sm">
           <thead className="text-muted-foreground">
             <tr>
               <th className="pb-1 pr-3 text-left font-normal">{t("code.worth.profile")}</th>
