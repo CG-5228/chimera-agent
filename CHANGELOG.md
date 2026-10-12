@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **Settings reads as a document with a table of contents.** Its sections sit in a column beside the content on a
+  wide window (the strip below it), Appearance is a section of its own instead of the first card of General, and
+  the rows most people never change (key pools, memory, bots, cache and sandbox, MCP, automation, experiments, the
+  Claude bridge, storage, diagnostics, server, sharing) fold under "Advanced", every one still there. The card, row
+  and toggle the screen is built from moved to `components/settings/rows.tsx` so other screens can share them.
+
 - **The rail names its destinations, and the composer starts as one line.** The desktop app's left rail now writes
   each destination's name under its icon; it was a column of five icons named only on hover. The Code screen's
   pickers (who runs the turn, cost profile, model, style) start as their line of chips, and the whole line opens
