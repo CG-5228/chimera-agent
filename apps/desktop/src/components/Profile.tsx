@@ -3,7 +3,23 @@ import { useQuery } from "@tanstack/react-query";
 import { ErrorState } from "@/components/ui/async";
 import { EmptyState, Panel, Spinner } from "@/components/ui/panel";
 import { getMemoryProfile } from "@/lib/api";
-import { useT } from "@/lib/i18n";
+import { Badge } from "@/components/ui/panel";
+import { useT, type TFunc } from "@/lib/i18n";
+
+/** Where a persona fact came from, in words. The store's source ids ("chat", "extracted") were
+ *  printed raw, in English, under every fact; an unknown one is still shown as sent. */
+function sourceLabel(t: TFunc, source: string): string {
+  switch (source) {
+    case "chat":
+      return t("profile.source.chat");
+    case "extracted":
+      return t("profile.source.extracted");
+    case "chimera":
+      return t("profile.source.chimera");
+    default:
+      return source;
+  }
+}
 
 /**
  * What the agent has learned about you.
@@ -16,7 +32,7 @@ import { useT } from "@/lib/i18n";
  * Read-only by design: the profile is derived by the agent from persona facts, so the honest place
  * to change it is the facts themselves, in Memory.
  */
-export function Profile() {
+export function Profile({ onOpenMemory }: { onOpenMemory?: () => void } = {}) {
   const t = useT();
   const profile = useQuery({ queryKey: ["memory-profile"], queryFn: getMemoryProfile });
 
@@ -39,7 +55,18 @@ export function Profile() {
         </div>
       </Panel>
 
-      <Panel title={t("profile.facts")}>
+      <Panel
+        title={t("profile.facts")}
+        // Read-only here on purpose (see above), so the way to change a fact is one click away
+        // rather than a tab the reader has to know about.
+        action={
+          onOpenMemory ? (
+            <button type="button" onClick={onOpenMemory} className="text-xs text-accent-ink hover:underline">
+              {t("profile.manage")}
+            </button>
+          ) : undefined
+        }
+      >
         {persona.length === 0 ? (
           <EmptyState text={t("profile.noFacts")} />
         ) : (
@@ -48,10 +75,11 @@ export function Profile() {
               <p className="text-sm">{item.content}</p>
               {/* Where the fact came from. A persona fact the agent inferred and one you typed
                   yourself carry different weight, and you should be able to tell them apart. */}
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {item.source}
-                {item.provenance !== "clean" && ` · ${item.provenance}`}
-              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                <span>{sourceLabel(t, item.source)}</span>
+                {/* The same word and colour Memory uses for it, instead of the raw "tainted". */}
+                {item.provenance === "tainted" ? <Badge tone="warn">{t("memory.unverified")}</Badge> : null}
+              </div>
             </div>
           ))
         )}

@@ -51,6 +51,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **The Code screen's right panel waits for a turn to describe.** Before the first turn it was a stack of empty
   panels taking a quarter of the window. It now appears when a turn starts and stays for a failed turn's tool calls;
   its edge tab still opens it at any time, and a panel the person hid stays hidden.
+
+- **Knowledge and Automation tabs have addresses, and Profile says where a fact came from.** Like Settings, each
+  tab is now in the route (`#/knowledge?tab=skills`, `#/automation?tab=agents`), so it can be linked to, survives a
+  reload and answers the back button. Profile printed each persona fact's source id ("chat", "extracted") and the
+  store's "tainted" under it, in English in every language; it now says "You said it in a conversation" or "Learned
+  from a conversation", marks an unverified fact with Memory's own badge, and links to Memory to correct or forget.
 - **A compacted coding conversation keeps the title it started with.** Once a conversation compacted, the Code
   screen's sidebar titled it "[earlier conversation, compacted] N earlier messages were removed…", so long
   conversations could not be told apart, and compaction's own note counted as a turn. The title now comes from the

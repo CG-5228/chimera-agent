@@ -7,7 +7,15 @@ import { Tasks } from "@/components/Tasks";
 import { Tabs, TabPanel } from "@/components/ui/tabs";
 import { useT } from "@/lib/i18n";
 
-type Tab = "schedule" | "tasks" | "agents";
+export type AutomationTab = "schedule" | "tasks" | "agents";
+
+const AUTOMATION_TABS: readonly AutomationTab[] = ["schedule", "tasks", "agents"];
+
+/** A `?tab=` value from the URL, or the first tab for anything else — a stale link lands on the
+ *  screen rather than on nothing. Same contract as `settingsTab`. */
+export function automationTab(value: string | null | undefined): AutomationTab {
+  return AUTOMATION_TABS.find((tab) => tab === value) ?? "schedule";
+}
 
 /**
  * Work the agent does without being asked.
@@ -19,10 +27,16 @@ type Tab = "schedule" | "tasks" | "agents";
  * shipped a free text box pointing at it, so the only way to learn an id was wrong was a dispatch
  * that reported "0 worked".
  */
-export function Automation() {
+export function Automation({
+  tab: routeTab,
+  onTabChange,
+}: { tab?: AutomationTab; onTabChange?: (tab: AutomationTab) => void } = {}) {
   const t = useT();
   const id = useId();
-  const [tab, setTab] = useState<Tab>("schedule");
+  // Owned by the route when the app passes one, like Knowledge and Settings.
+  const [ownTab, setOwnTab] = useState<AutomationTab>("schedule");
+  const tab = onTabChange ? (routeTab ?? "schedule") : ownTab;
+  const setTab = onTabChange ?? setOwnTab;
 
   const items = [
     { value: "schedule" as const, label: t("nav.schedule") },
