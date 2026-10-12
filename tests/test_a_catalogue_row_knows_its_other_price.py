@@ -32,6 +32,10 @@ def test_an_also_seen_price_is_known_and_an_unseen_one_is_not() -> None:
 def test_the_three_flipping_rows_carry_their_history() -> None:
     by = {e.slug: e for e in CATALOG}
     assert price_is_known(by["openrouter/z-ai/glm-5.3-flash"], 0.075)
+    # The reading of 2026-10-12, when the live check on main turned red at 0.0232 in / 1.20 out; the
+    # figure before it (0.045) stays known too, in case the route flips back.
+    assert price_is_known(by["openrouter/z-ai/glm-5.3-flash"], 0.0232)
+    assert price_is_known(by["openrouter/z-ai/glm-5.3-flash"], 0.045)
     assert price_is_known(by["openrouter/deepseek/deepseek-chat-v3.1"], 0.55)
     assert price_is_known(by["openrouter/deepseek/deepseek-v4-flash-0731"], 0.065)
 

@@ -168,7 +168,7 @@ CATALOG: tuple[CatalogEntry, ...] = (
     ),
     CatalogEntry(
         "openrouter/z-ai/glm-5.3-flash", "mid", "Zhipu (GLM)",
-        0.045, 0.60, tools=True, context_k=1048, also_seen=((0.075, 0.25), (0.15, 0.50)),
+        0.045, 1.20, tools=True, context_k=1048, also_seen=((0.075, 0.25), (0.15, 0.50), (0.045, 0.60), (0.0232, 1.20)),
         # bench/useful_context (2026-09-30, RESULTS_glm53flash.md): 54 paired agent transcripts on the
         # Novita fp8 route — 54/54 at 4k, 53/54 at 512k (median 512,041 tokens), every rung within −10 pp
         # of 4k. 512 was the top of the ladder that was run, so it is a lower bound. The registered
@@ -179,7 +179,11 @@ CATALOG: tuple[CatalogEntry, ...] = (
         "        DOUBLED to 0.15/0.50 — still the best price-to-index in this tier, by half the\n"
         "        margin the earlier note claimed. On 2026-09-24 the live check on main turned red\n"
         "        again: the index now quotes 0.045 in / 0.60 out (input cheaper, output dearer);\n"
-        "        both earlier figures stay in also_seen. NOT the default, and the reason is\n"
+        "        both earlier figures stay in also_seen. On 2026-10-12 the live check on main\n"
+        "        turned red again: the index quotes 0.0232 in / 1.20 out, input half and output\n"
+        "        double. The row now carries 1.20 out (the highest output figure seen) so a\n"
+        "        fallback never reads low, as on the rows above; 0.045/0.60 and 0.0232/1.20 join\n"
+        "        also_seen. NOT the default, and the reason is\n"
         "        measured: on the same one-file probe it took 257s against 72s for the slug above.\n"
         "        Reach for it when the window or the index matters more than latency",
     ),
