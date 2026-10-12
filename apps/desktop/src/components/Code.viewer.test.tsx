@@ -147,6 +147,12 @@ describe("Code — the file viewer", () => {
     const more = await screen.findByRole("button", {
       name: `Show all (${new Intl.NumberFormat("en").format(54321)} characters)`,
     });
+    // On its own row, not in the header beside the file name: there it squeezed the name to its
+    // first letters in a narrow viewer (0.65.0 visual check). The full path is the name's title.
+    const viewer = more.closest("[data-panel='viewer']") as HTMLElement;
+    const header = viewer.firstElementChild as HTMLElement;
+    expect(header.contains(more)).toBe(false);
+    expect(within(header).getByTitle("src/app.py")).toBeInTheDocument();
     vi.mocked(getFsFile).mockResolvedValue(
       fsFile({ content: "print('all of it')\n", truncated: false, total_chars: 19 }),
     );

@@ -28,13 +28,14 @@ import inspect
 import json
 import os
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
 from chimera.core.agent import AgentResult, ToolActivity, is_guidance
 from chimera.core.code_session_marks import CodeSessionMarks
+from chimera.core.context_budget import is_compaction_note, restored_task
 from chimera.core.redact import redact
 from chimera.providers.gateway import MessageLike
 from chimera.telemetry import get_logger
@@ -96,6 +97,31 @@ def _opens_turn(message: MessageLike) -> bool:
     for a long conversation all read "user" as "a turn began here"."""
     data = _as_dict(message)
     return data.get("role") == "user" and not is_guidance(data)
+
+
+def _is_person_turn(message: MessageLike) -> bool:
+    """A turn the person opened: not guidance, and not a note compaction left in the transcript."""
+    data = _as_dict(message)
+    return _opens_turn(data) and not is_compaction_note(data.get("content"))
+
+
+def _title_from(messages: Sequence[MessageLike]) -> str:
+    """The conversation's title: the first thing the person asked.
+
+    Once a conversation compacts, that message is gone and the first user message is compaction's
+    own note. The restored block right after it carries the task verbatim, so the title is taken from
+    there; without one, from the first message the person typed that is still in the transcript.
+    """
+    for message in messages:
+        data = _as_dict(message)
+        if data.get("role") != "user":
+            continue
+        task = restored_task(data.get("content"))
+        if task:
+            return _title_of(task)
+        if _is_person_turn(data):
+            return _title_of(str(data.get("content") or ""))
+    return ""
 
 
 def trim_to_a_safe_boundary(messages: list[MessageLike], limit: int) -> list[MessageLike]:
@@ -268,11 +294,7 @@ class CodeSession:
         drifted to. Nothing is summarised by a model — a title that costs a model call is a title
         that is sometimes missing, and one that paraphrases is a title that can be wrong.
         """
-        for message in self.messages:
-            data = _as_dict(message)
-            if _opens_turn(data):
-                return _title_of(str(data.get("content") or ""))
-        return ""
+        return _title_from(self.messages)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -458,11 +480,7 @@ class CodeSessionStore:
                     "code session %s unreadable, omitted from the list: %s", path.stem, exc
                 )
                 continue
-            title = ""
-            for message in messages:
-                if _opens_turn(message):
-                    title = _title_of(str(message.get("content") or ""))
-                    break
+            title = _title_from(messages)
             # The last stored receipt's verdict: the one fact about how the last turn ended that a
             # conversation older than the marks file (`code_session_marks`) carries on its own.
             receipts = data.get("receipts")
@@ -477,7 +495,7 @@ class CodeSessionStore:
                     # Turns, not messages: a user asking twice is two turns, but the transcript between
                     # them holds every tool call the agent made, and counting those would report a
                     # number that grows with the agent's verbosity rather than with the conversation.
-                    "turns": sum(1 for m in messages if _opens_turn(m)),
+                    "turns": sum(1 for m in messages if _is_person_turn(m)),
                     "updated_at": path.stat().st_mtime,
                     "last_verdict": last_verdict,
                 }

@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Fixed
+
+- **A compacted coding conversation keeps the title it started with.** Once a conversation compacted, the Code
+  screen's sidebar titled it "[earlier conversation, compacted] N earlier messages were removed…", so long
+  conversations could not be told apart, and compaction's own note counted as a turn. The title now comes from the
+  task the restored block carries verbatim, or from the first message the person typed that is still there.
+- **The file viewer's "Show all" sits on its own row.** In the header, beside the "truncated" badge and the panel's
+  controls, it squeezed the file name to its first letters in a narrow viewer. The name now shows its full path as a
+  tooltip.
 
 ## [0.65.0] - 2026-10-11
 ### Security
