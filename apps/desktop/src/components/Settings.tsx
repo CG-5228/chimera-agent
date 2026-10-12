@@ -28,7 +28,10 @@ import { ErrorState } from "@/components/ui/async";
 import { Switch } from "@/components/ui/switch";
 import {
   CodeFontSelect,
+  AccentPicker,
+  ContrastSelect,
   MotionSelect,
+  TintSelect,
   TextSizeSelect,
   ThemeSelect,
   TranscriptWidthSelect,
@@ -1550,6 +1553,16 @@ export function Settings({
                       part of the screen's layout. */}
                   <Row label={t("settings.row.theme")} hint={t("settings.hint.theme")}>
                     <ThemeSelect name={t("settings.row.theme")} />
+                  </Row>
+                  {/* Your own theme, on top of light or dark. Each default is the shipped theme. */}
+                  <Row label={t("settings.row.accent")} hint={t("settings.hint.accent")}>
+                    <AccentPicker name={t("settings.row.accent")} />
+                  </Row>
+                  <Row label={t("settings.row.tint")} hint={t("settings.hint.tint")}>
+                    <TintSelect name={t("settings.row.tint")} />
+                  </Row>
+                  <Row label={t("settings.row.contrast")} hint={t("settings.hint.contrast")}>
+                    <ContrastSelect name={t("settings.row.contrast")} />
                   </Row>
                   <Row label={t("settings.row.motion")} hint={t("settings.hint.motion")}>
                     <MotionSelect name={t("settings.row.motion")} />

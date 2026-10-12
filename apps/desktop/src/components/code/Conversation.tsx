@@ -2272,7 +2272,10 @@ export function Conversation({
               at the answer. */}
           <Button
             size="sm"
-            variant={fuse ? "primary" : "ghost"}
+            // Armed reads as a pressed outline, not a second gradient: Send is the one primary in
+            // this row, and two filled buttons side by side say "pick one" (von Restorff).
+            variant={fuse ? "outline" : "ghost"}
+            className={fuse ? "border-accent/60 text-accent-ink" : undefined}
             aria-pressed={fuse}
             title={t("composer.fuseHint")}
             onClick={() => setFuse((f) => !f)}
@@ -2284,7 +2287,10 @@ export function Conversation({
               park the turn waiting for you. It ADDS a stop — every dangerous action still asks. */}
           <Button
             size="sm"
-            variant={planGate ? "primary" : "ghost"}
+            // Armed reads as a pressed outline, not a second gradient: Send is the one primary in
+            // this row, and two filled buttons side by side say "pick one" (von Restorff).
+            variant={planGate ? "outline" : "ghost"}
+            className={planGate ? "border-accent/60 text-accent-ink" : undefined}
             aria-pressed={planGate}
             title={t("composer.planGateHint")}
             onClick={() => setPlanGate((p) => !p)}

@@ -5,8 +5,19 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import indexHtml from "../../index.html?raw";
 
 import {
+  ACCENT_KEY,
+  ACCENTS,
+  applyAccent,
   applyCodeFont,
+  applyContrast,
   applyMotion,
+  applyTint,
+  CONTRAST_KEY,
+  CONTRASTS,
+  paintStoredAppearance,
+  readAccent,
+  TINT_KEY,
+  TINTS,
   applyTextSize,
   applyTheme,
   applyUiFont,
@@ -147,6 +158,44 @@ describe("text size and fonts", () => {
   });
 });
 
+describe("your own theme: accent, tint and contrast", () => {
+  afterEach(() => {
+    localStorage.clear();
+    const d = document.documentElement.dataset;
+    delete d.accent;
+    delete d.tint;
+    delete d.contrast;
+  });
+
+  it("stamps a chosen value and removes the attribute for the default", () => {
+    applyAccent("green");
+    applyTint("warm");
+    applyContrast("high");
+    const d = document.documentElement.dataset;
+    expect([d.accent, d.tint, d.contrast]).toEqual(["green", "warm", "high"]);
+    expect(localStorage.getItem(ACCENT_KEY)).toBe("green");
+
+    // The defaults are the shipped themes exactly: no attribute, so no override rule can match.
+    applyAccent("blue");
+    applyTint("navy");
+    applyContrast("standard");
+    expect([d.accent, d.tint, d.contrast]).toEqual([undefined, undefined, undefined]);
+  });
+
+  it("ignores a stored value it does not know, rather than painting a broken theme", () => {
+    localStorage.setItem(ACCENT_KEY, "purple");
+    expect(readAccent()).toBe("blue");
+  });
+
+  it("is repainted from storage in a window that only reads it", () => {
+    localStorage.setItem(ACCENT_KEY, "rose");
+    localStorage.setItem(CONTRAST_KEY, "high");
+    paintStoredAppearance();
+    expect(document.documentElement.dataset.accent).toBe("rose");
+    expect(document.documentElement.dataset.contrast).toBe("high");
+  });
+});
+
 describe("the inline script in index.html", () => {
   // The pre-paint script duplicates this module's resolution logic on purpose (an external file
   // would be a round-trip in front of the flash it prevents). These assertions are what stop the
@@ -159,6 +208,9 @@ describe("the inline script in index.html", () => {
     expect(html).toContain(`"${TEXT_SIZE_KEY}"`);
     expect(html).toContain(`"${UI_FONT_KEY}"`);
     expect(html).toContain(`"${CODE_FONT_KEY}"`);
+    expect(html).toContain(`"${ACCENT_KEY}"`);
+    expect(html).toContain(`"${TINT_KEY}"`);
+    expect(html).toContain(`"${CONTRAST_KEY}"`);
   });
 
   it("accepts exactly the values this module accepts, for text size and both fonts", () => {
@@ -172,6 +224,9 @@ describe("the inline script in index.html", () => {
     expect(listed(TEXT_SIZE_KEY)).toEqual([...TEXT_SIZES].sort());
     expect(listed(UI_FONT_KEY)).toEqual([...UI_FONTS].sort());
     expect(listed(CODE_FONT_KEY)).toEqual([...CODE_FONTS].sort());
+    expect(listed(ACCENT_KEY)).toEqual([...ACCENTS].sort());
+    expect(listed(TINT_KEY)).toEqual([...TINTS].sort());
+    expect(listed(CONTRAST_KEY)).toEqual([...CONTRASTS].sort());
   });
 
   it("sets both attributes before the app bundle loads", () => {
@@ -180,6 +235,9 @@ describe("the inline script in index.html", () => {
     expect(html).toContain("dataset.textSize");
     expect(html).toContain("dataset.font ");
     expect(html).toContain("dataset.fontCode");
+    expect(html).toContain("dataset.accent");
+    expect(html).toContain("dataset.tint");
+    expect(html).toContain("dataset.contrast");
     // Ordering is the whole point: after the module script, the flash is back.
     expect(html.indexOf("chimera.theme")).toBeLessThan(html.indexOf("/src/main.tsx"));
   });

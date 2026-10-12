@@ -1,11 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
+import { focusRing } from "@/components/ui/focus";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useAppearance } from "@/lib/appearance";
 import { anyInstalled, bundledFontLoads, fontInstalled } from "@/lib/fonts";
 import { useT } from "@/lib/i18n";
 import { useLayout } from "@/lib/layout/context";
 import type { TranscriptWidth } from "@/lib/layout/model";
-import type { CodeFont, Motion, TextSize, Theme, UiFont } from "@/lib/theme";
+import { ACCENTS, type Accent, type CodeFont, type Contrast, type Motion, type TextSize, type Theme, type Tint, type UiFont } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 
 /**
  * The controls of Settings › Appearance, beside the language picker.
@@ -74,6 +77,82 @@ export function ThemeSelect({ name }: { name: string }) {
     { value: "dark", label: t("settings.theme.dark") },
   ];
   return <Choice name={name} value={theme} options={options} onChange={setTheme} />;
+}
+
+/**
+ * The accent, as swatches rather than a list of colour names: a colour is chosen by looking at it.
+ *
+ * A radio group, so it behaves like one — one tab stop, arrows move the choice — and each swatch is
+ * named, because a circle of colour says nothing to a screen reader.
+ */
+export function AccentPicker({ name }: { name: string }) {
+  const t = useT();
+  const { accent, setAccent } = useAppearance();
+  const refs = useRef<Partial<Record<Accent, HTMLButtonElement | null>>>({});
+  const label: Record<Accent, string> = {
+    blue: t("settings.accent.blue"),
+    cyan: t("settings.accent.cyan"),
+    green: t("settings.accent.green"),
+    amber: t("settings.accent.amber"),
+    rose: t("settings.accent.rose"),
+    graphite: t("settings.accent.graphite"),
+  };
+  const move = (event: KeyboardEvent<HTMLDivElement>) => {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+    if (step === undefined) return;
+    event.preventDefault();
+    const next = ACCENTS[(ACCENTS.indexOf(accent) + step + ACCENTS.length) % ACCENTS.length];
+    setAccent(next);
+    refs.current[next]?.focus();
+  };
+  return (
+    <div role="radiogroup" aria-label={name} className="flex items-center gap-2.5" onKeyDown={move}>
+      {ACCENTS.map((a) => (
+        <Tooltip key={a} label={label[a]}>
+          <button
+            ref={(el) => {
+              refs.current[a] = el;
+            }}
+            type="button"
+            role="radio"
+            aria-checked={accent === a}
+            aria-label={label[a]}
+            tabIndex={accent === a ? 0 : -1}
+            data-swatch={a}
+            onClick={() => setAccent(a)}
+            className={cn(
+              "accent-swatch h-6 w-6 shrink-0 rounded-full transition-transform duration-1 ease-out",
+              focusRing,
+              // The chosen one is marked by a ring in the TEXT colour, not by its own colour: the
+              // mark has to read the same on every swatch, including the one that matches it.
+              accent === a ? "ring-2 ring-foreground ring-offset-2 ring-offset-card" : "hover:scale-110",
+            )}
+          />
+        </Tooltip>
+      ))}
+    </div>
+  );
+}
+
+export function TintSelect({ name }: { name: string }) {
+  const t = useT();
+  const { tint, setTint } = useAppearance();
+  const options: Option<Tint>[] = [
+    { value: "navy", label: t("settings.tint.navy") },
+    { value: "neutral", label: t("settings.tint.neutral") },
+    { value: "warm", label: t("settings.tint.warm") },
+  ];
+  return <Choice name={name} value={tint} options={options} onChange={setTint} />;
+}
+
+export function ContrastSelect({ name }: { name: string }) {
+  const t = useT();
+  const { contrast, setContrast } = useAppearance();
+  const options: Option<Contrast>[] = [
+    { value: "standard", label: t("settings.contrast.standard") },
+    { value: "high", label: t("settings.contrast.high") },
+  ];
+  return <Choice name={name} value={contrast} options={options} onChange={setContrast} />;
 }
 
 export function MotionSelect({ name }: { name: string }) {

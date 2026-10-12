@@ -196,6 +196,10 @@ export function defaultLayout(): Layout {
     counters[zone] = order + 1;
     panels[id] = { zone, order, mode: "open" };
   }
+  // The composer's pickers start as their line of chips. Open, they were four rows stacked above the
+  // box you type in (who runs, cost profile, model, style) on every screenful, for choices made once
+  // a week; one line says the same and opens with a click.
+  panels["composer.config"] = { ...panels["composer.config"], mode: "minimized" };
   const cards = {} as Record<CardKind, "open" | "minimized">;
   for (const kind of CARD_KINDS) cards[kind] = "open";
   return {
