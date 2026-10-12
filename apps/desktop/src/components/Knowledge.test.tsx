@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { Knowledge } from "@/components/Knowledge";
+import { Knowledge, knowledgeTab, type KnowledgeTab } from "@/components/Knowledge";
 import { I18nProvider } from "@/lib/i18n";
 
 const getMemoryProfile = vi.fn();
@@ -22,12 +22,12 @@ vi.mock("@/lib/api", () => ({
   retireSkill: vi.fn(),
 }));
 
-function renderKnowledge() {
+function renderKnowledge(props: { tab?: KnowledgeTab; onTabChange?: (tab: KnowledgeTab) => void } = {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <I18nProvider>
       <QueryClientProvider client={qc}>
-        <Knowledge />
+        <Knowledge {...props} />
       </QueryClientProvider>
     </I18nProvider>,
   );
@@ -106,7 +106,30 @@ describe("Knowledge", () => {
     renderKnowledge();
     await user.click(screen.getByRole("tab", { name: /profile/i }));
     // A fact the agent picked up from a page it read is not the same as one you told it, and the
-    // difference should be visible rather than inferred.
-    expect(await screen.findByText(/tainted/)).toBeInTheDocument();
+    // difference should be visible rather than inferred. It is said with Memory's own word for it
+    // ("unverified"), not the store's id ("tainted"), which was English in every language; an
+    // unknown source is still shown as sent.
+    expect(await screen.findByText("unverified")).toBeInTheDocument();
+    expect(screen.getByText("web")).toBeInTheDocument();
+    expect(screen.queryByText(/tainted/)).not.toBeInTheDocument();
+  });
+});
+
+describe("Knowledge's tabs have addresses", () => {
+  it("shows the tab the route names and reports a change instead of keeping it", async () => {
+    stubEmpty();
+    getMemoryProfile.mockResolvedValue({ profile: "", persona: [] });
+    const onTabChange = vi.fn();
+    const user = userEvent.setup();
+    renderKnowledge({ tab: "profile", onTabChange });
+    expect(screen.getByRole("tab", { name: /profile/i })).toHaveAttribute("aria-selected", "true");
+    await user.click(screen.getByRole("tab", { name: /skills/i }));
+    expect(onTabChange).toHaveBeenCalledWith("skills");
+  });
+
+  it("reads an unknown tab as the first one, so a stale link lands on the screen", () => {
+    expect(knowledgeTab("skills")).toBe("skills");
+    expect(knowledgeTab("nonsense")).toBe("memory");
+    expect(knowledgeTab(null)).toBe("memory");
   });
 });

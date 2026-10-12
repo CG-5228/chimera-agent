@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
 ### Added
 
 - **Your own theme, on top of light and dark.** Settings › Appearance gains three rows: an accent colour (blue, cyan,
@@ -15,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **Settings reads as a document with a table of contents.** Its sections sit in a column beside the content on a
+  wide window (the strip below it), Appearance is a section of its own instead of the first card of General, and
+  the rows most people never change (key pools, memory, bots, cache and sandbox, MCP, automation, experiments, the
+  Claude bridge, storage, diagnostics, server, sharing) fold under "Advanced", every one still there. The card, row
+  and toggle the screen is built from moved to `components/settings/rows.tsx` so other screens can share them.
+
 - **The rail names its destinations, and the composer starts as one line.** The desktop app's left rail now writes
   each destination's name under its icon; it was a column of five icons named only on hover. The Code screen's
   pickers (who runs the turn, cost profile, model, style) start as their line of chips, and the whole line opens
@@ -24,6 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Work › Git asks before discarding on the page, and names what it does.** Discarding changes asked through the
+  browser's `confirm` box, which cannot say which files and does not look like the app; the question now sits under
+  the button, red, with Cancel first. Each file's checkbox has a name ("Include src/a.py in the commit"); it had
+  none, and an empty diff no longer claims "this run changed nothing" about a working-tree file. In Portuguese, "Preparados" and "Não rastreados" read "Vão no próximo commit"
+  and "Novos (fora do git)".
+
 - **Memory and Schedule speak the app's language.** Memory kinds were printed as their identifiers ("episodic",
   "semantic") in a monospace font on every row, and a schedule was described in English whatever the app was set to
   ("every day at 07:00"). Kinds are now translated, and daily, weekday, weekly, hourly and every-N schedules are said
@@ -31,9 +44,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   The schedule's switch says "Active" or "Paused" beside it, and the memory screen's unverified count is amber
   rather than red: it is something to review, not an error.
 
+- **Work › Runs can be searched and filtered, and long histories fold.** The list drew every run and every attempt
+  at once, with no way to look for one. It now has a search over the task and a filter by outcome (all, passed,
+  failed, paused) with a count on each; the earlier attempts of a run fold under the one that decided it; and twenty
+  runs are drawn before "Show older runs".
+
+- **"Was it worth it?" says when it could not ask.** A failed request rendered exactly like "no runs yet", which on a
+  screen about evidence reads as a finding; it now shows the error with a retry, and a spinner while loading. The
+  table is set at body size, and the stray divider from the panel's old place under the conversation is gone. The
+  panel still ranks nothing.
+
 - **The Code screen's right panel waits for a turn to describe.** Before the first turn it was a stack of empty
   panels taking a quarter of the window. It now appears when a turn starts and stays for a failed turn's tool calls;
   its edge tab still opens it at any time, and a panel the person hid stays hidden.
+
+- **Knowledge and Automation tabs have addresses, and Profile says where a fact came from.** Like Settings, each
+  tab is now in the route (`#/knowledge?tab=skills`, `#/automation?tab=agents`), so it can be linked to, survives a
+  reload and answers the back button. Profile printed each persona fact's source id ("chat", "extracted") and the
+  store's "tainted" under it, in English in every language; it now says "You said it in a conversation" or "Learned
+  from a conversation", marks an unverified fact with Memory's own badge, and links to Memory to correct or forget.
+
+- **An unsaved file's tab says so to a screen reader.** The editor marks a file that differs from disk with a dot,
+  which has no name, so its tab announced exactly like a saved one; it is now named "a.py, unsaved changes". In
+  Portuguese, the agent registry's "Id" field is called by what it does on the board ("Papel no quadro").
+
+- **Skills says what waits for you, in your language.** The learned-skills rows printed "tainted" and "retire?" in
+  English in every language, the second in the red of a failure; they now read "unverified" and a translated,
+  amber "retire?". A notice above the fold says when learned skills wait for a decision, with a button to them, and a
+  line of links reaches each of the screen's five sections.
+
+- **Connections and Usage in plain Portuguese.** The Connections tabs read "MCP", "Capacidades" and "OpenAPI", and
+  Usage spoke of a "Mix de rotas" of "único / fusão / cascata". They now say what each is ("Ferramentas externas
+  (MCP)", "Ferramentas", "APIs (OpenAPI)"; "Como os turnos rodaram": um modelo, vários modelos, pequeno primeiro).
+  Other languages are unchanged.
+
+- **Decisions asks first and explains later.** The one thing on the screen that asks something of the person, the
+  label on a recent answer, sat last, under every group's calibration figures. A line at the top now says how many
+  answers wait, the recent answers come first among the panels, and the calibration, review bands and predicted
+  against actual fold into "Technical details".
+
+- **The design gate reads decimal font sizes.** Its pattern for arbitrary text sizes took digits only, so two
+  `text-[12.5px]` in the Code screen's viewer passed it; it now reads decimals and every length unit, and the two
+  use the scale's `text-sm`. The arbitrary-utility ceiling drops from 22 to the 7 that exist, and DESIGN.md no
+  longer points at a `tailwind.config.js` the app does not have.
 - **A compacted coding conversation keeps the title it started with.** Once a conversation compacted, the Code
   screen's sidebar titled it "[earlier conversation, compacted] N earlier messages were removed…", so long
   conversations could not be told apart, and compaction's own note counted as a turn. The title now comes from the

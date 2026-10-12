@@ -1,10 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useId,
-  useState,
-  type ReactNode,
-} from "react";
+import { useContext, useId, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, KeyRound, Loader2, Trash2 } from "lucide-react";
 import {
@@ -64,73 +58,7 @@ import type {
   ProviderCfg,
   SandboxState,
 } from "@/lib/types";
-
-function Card({ title, children }: { title: string; children: ReactNode }) {
-  // Named region rather than a bare section: this screen stacks eleven of them, and unnamed they
-  // announce as eleven identical "section" landmarks with no way to tell which one you are in.
-  const headingId = useId();
-  return (
-    <section className="surface overflow-hidden" aria-labelledby={headingId}>
-      <h2
-        id={headingId}
-        className="border-b border-hairline px-4 py-2.5 text-sm font-semibold"
-      >
-        {title}
-      </h2>
-      <div className="divide-y divide-hairline">{children}</div>
-    </section>
-  );
-}
-
-/** The label of the enclosing Row, so a control inside it can name itself without repeating it. */
-const RowLabelContext = createContext("");
-
-/** When a saved change starts applying, for the settings where the answer is not "the next call".
- *
- * The value comes from the server (`config.applies`), never from a list kept here: the answer is a
- * property of where the setting is READ, so a copy on this side would go stale the first time a read
- * moves — and it would go stale silently, which is the whole failure this label exists to stop. A
- * control that confirms and does nothing spends the user's trust in every other control on screen.
- */
-function AppliesNote({ when }: { when?: string }) {
-  const t = useT();
-  // `commands_now`: two moments, not one. What builds its sandbox per use (a `!` command, a
-  // workflow, the verifier) takes the save at once; an open chat keeps the tools it was built with.
-  const key =
-    when === "next_launch"
-      ? "settings.applies.nextLaunch"
-      : when === "next_conversation"
-        ? "settings.applies.nextConversation"
-        : when === "commands_now"
-          ? "settings.applies.commandsNow"
-          : null;
-  if (!key) return null;
-  return <div className="text-xs text-warn-foreground">{t(key)}</div>;
-}
-
-/** The env vars this server inherited from its own environment, so a Row can say it is one of them. */
-const PinnedContext = createContext<ReadonlySet<string>>(new Set());
-
-/**
- * When the server's environment outranks the save this screen is about to make.
- *
- * A real environment variable beats `.env`, and `PATCH /api/config` writes `.env`. So for a key the
- * server was STARTED with, Save succeeds, the value holds for the whole session (the patch writes
- * `os.environ` too) and then reverts at the next launch. The delay is what makes this worse than a
- * refusal: by the time the old value is back, nobody connects it to the save, and the screen has
- * spent its credibility on a control that reported a change it could not keep.
- *
- * The list comes from the server (`config.pinned`), like `applies` and for the same reason: only the
- * process that was started knows what it was started with, and a copy kept here would be a guess
- * about someone else's deployment. It is normally empty — this is a container / systemd / remote
- * concern, reachable at all because the app can be pointed at a server somebody else runs.
- */
-function PinnedNote({ env }: { env?: string }) {
-  const t = useT();
-  const pinned = useContext(PinnedContext);
-  if (!env || !pinned.has(env)) return null;
-  return <div className="text-xs text-warn-foreground">{t("settings.pinned")}</div>;
-}
+import { Card, PinnedContext, Row, RowLabelContext, Toggle } from "@/components/settings/rows";
 
 /**
  * Who the agent is — the one thing this screen could not say.
@@ -595,48 +523,6 @@ function GovernanceAuditCard({
   );
 }
 
-function Row({
-  label,
-  hint,
-  applies,
-  env,
-  warn = false,
-  note,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  applies?: string;
-  /** The single env var this row writes, so the row can say when the server's environment pins it. */
-  env?: string;
-  /** The hint is a warning about what switching this on allows, not a description of it. */
-  warn?: boolean;
-  /** A live line under the hint — a figure the server measured, not a sentence written in advance. */
-  note?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 px-4 py-3">
-      <div className="min-w-0">
-        <div className="text-sm font-medium">{label}</div>
-        {hint && (
-          <div className={warn ? "text-xs text-warn-foreground" : "text-xs text-muted-foreground"}>
-            {hint}
-          </div>
-        )}
-        {note}
-        <AppliesNote when={applies} />
-        <PinnedNote env={env} />
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <RowLabelContext.Provider value={label}>
-          {children}
-        </RowLabelContext.Provider>
-      </div>
-    </div>
-  );
-}
-
 const inputCls = "field h-8 w-56 px-2.5 text-sm";
 
 function TextField({
@@ -1009,24 +895,6 @@ function LanguageSelect() {
         </option>
       ))}
     </select>
-  );
-}
-
-function Toggle({
-  on,
-  onChange,
-}: {
-  on: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  // Was a near-copy of the one in Cron.tsx. Now the shared primitive, named from its Row — before
-  // this, all six of these announced as an unlabelled "switch".
-  return (
-    <Switch
-      checked={on}
-      onChange={onChange}
-      label={useContext(RowLabelContext)}
-    />
   );
 }
 
@@ -1437,10 +1305,11 @@ export function MessagingCard({
   );
 }
 
-export type SettingsTab = "general" | "connections" | "usage" | "security" | "decisions";
+export type SettingsTab = "general" | "appearance" | "connections" | "usage" | "security" | "decisions";
 
 const SETTINGS_TABS: readonly SettingsTab[] = [
   "general",
+  "appearance",
   "connections",
   "usage",
   "security",
@@ -1504,6 +1373,9 @@ export function Settings({
 
   const tabs = [
     { value: "general" as const, label: t("settings.tab.general") },
+    // Its own section: twelve rows about how the app looks were the first card of General, above
+    // every row about what the agent may do.
+    { value: "appearance" as const, label: t("settings.card.appearance") },
     { value: "connections" as const, label: t("settings.tab.connections") },
     { value: "usage" as const, label: t("nav.usage") },
     { value: "security" as const, label: t("settings.tab.security") },
@@ -1523,12 +1395,16 @@ export function Settings({
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           )}
         </div>
+        {/* Sections in a column beside the content from `lg` up, the strip below it. Six sections
+            and a long General read as a document with a table of contents, not as a menu bar. */}
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <Tabs
           items={tabs}
           value={tab}
           onChange={setTab}
           aria-label={t("settings.title")}
-          className="px-6"
+          orientation="vertical"
+          className="px-6 lg:w-52 lg:shrink-0 lg:px-3 lg:pt-4"
         />
         <div className="min-h-0 flex-1 overflow-y-auto">
           <TabPanel tabsId={tabsId} value={tab}>
@@ -1538,7 +1414,7 @@ export function Settings({
               <Governance embedded onOpenSettings={() => setTab("general")} />
             )}
             {tab === "decisions" && <Decisions embedded />}
-            {tab === "general" && (
+            {tab === "appearance" && (
               <div className="mx-auto max-w-2xl space-y-6 px-6 py-6">
                 <Card title={t("settings.card.appearance")}>
                   <Row
@@ -1583,7 +1459,10 @@ export function Settings({
                     <CodeFontSelect name={t("settings.row.codeFont")} />
                   </Row>
                 </Card>
-
+              </div>
+            )}
+            {tab === "general" && (
+              <div className="mx-auto max-w-2xl space-y-6 px-6 py-6">
                 <VoiceCard>
                   {/* The first word is what a listener waits for, and it is where models differ
                       most: measured 2026-09-17, gemini-2.5-flash-lite at 0.7–0.9 s against the
@@ -1914,6 +1793,14 @@ export function Settings({
 
                 {/* Existed, worked, rotated round-robin with a cooldown per key — and no interface could
             reach it, so the whole feature was a paragraph in .env.example. */}
+                {/* What most people never change, folded rather than removed: the rows are all still
+                    here, one click away, and the summary says what is inside. */}
+                <details className="group space-y-6">
+                  <summary className="cursor-pointer list-none rounded-xl2 border border-hairline bg-card px-4 py-3">
+                    <span className="text-sm font-semibold">{t("settings.advanced")}</span>
+                    <span className="block text-xs text-muted-foreground">{t("settings.advancedHint")}</span>
+                  </summary>
+                  <div className="space-y-6 pt-6">
                 <Card title={t("settings.card.pools")}>
                   <Row
                     label={t("settings.row.poolsIntro")}
@@ -2428,9 +2315,12 @@ export function Settings({
                 {mutation.isError && (
                   <p className="text-sm text-bad-foreground">{t("settings.saveError")}</p>
                 )}
+                  </div>
+                </details>
               </div>
             )}
           </TabPanel>
+        </div>
         </div>
       </div>
     </PinnedContext.Provider>

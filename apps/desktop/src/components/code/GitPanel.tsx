@@ -35,6 +35,7 @@ function GitRow({
   onToggleCheck: () => void;
   onSelect: () => void;
 }) {
+  const t = useT();
   const code = `${file.x === " " ? "·" : file.x}${file.y === " " ? "·" : file.y}`;
   return (
     <div
@@ -48,6 +49,9 @@ function GitRow({
         className="h-3 w-3 shrink-0 accent-accent"
         checked={checked}
         onChange={onToggleCheck}
+        // It had no name: a screen reader read a column of bare "checkbox, checked" with nothing to
+        // say which file each one would put in the commit.
+        aria-label={t("code.git.include", { path: file.path })}
       />
       <button
         onClick={onSelect}
@@ -110,6 +114,10 @@ export function GitPanel({ workspace }: { workspace: string }) {
   const selectedPaths = files.filter((f) => checked[f.path]).map((f) => f.path);
 
   const [reverting, setReverting] = useState(false);
+  // Asked on the page, not in `window.confirm`: the browser's dialog does not look like this app,
+  // cannot be styled to say which files, and in the desktop webview it is a native box that steals
+  // the window. The question sits under the button that raised it, with the safe answer first.
+  const [confirmingRevert, setConfirmingRevert] = useState(false);
 
   /** Throw away the selected paths' changes.
    *
@@ -119,7 +127,7 @@ export function GitPanel({ workspace }: { workspace: string }) {
    */
   async function revert() {
     if (selectedPaths.length === 0) return;
-    if (!window.confirm(t("code.git.revertConfirm", { n: selectedPaths.length }))) return;
+    setConfirmingRevert(false);
     setReverting(true);
     try {
       await gitRevert(workspace || null, selectedPaths);
@@ -248,8 +256,10 @@ export function GitPanel({ workspace }: { workspace: string }) {
               <Button
                 size="sm"
                 variant="ghost"
+                className="text-bad-foreground"
+                aria-expanded={confirmingRevert}
                 disabled={selectedPaths.length === 0 || committing || reverting}
-                onClick={() => void revert()}
+                onClick={() => setConfirmingRevert((v) => !v)}
               >
                 {reverting ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -265,6 +275,29 @@ export function GitPanel({ workspace }: { workspace: string }) {
               ) : null}
               {commitErr ? <span className="text-xs text-bad-foreground">{t("code.git.commitError")}</span> : null}
             </div>
+            {confirmingRevert ? (
+              <div
+                role="alertdialog"
+                aria-label={t("code.git.revert")}
+                className="flex flex-wrap items-center gap-2 rounded-chip border border-bad/40 bg-bad/10 px-3 py-2"
+              >
+                <span className="min-w-0 flex-1 text-xs text-bad-foreground">
+                  {t("code.git.revertConfirm", { n: selectedPaths.length })}
+                </span>
+                <Button size="sm" variant="ghost" onClick={() => setConfirmingRevert(false)}>
+                  {t("common.cancel")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-bad/60 text-bad-foreground"
+                  onClick={() => void revert()}
+                >
+                  <Undo2 className="h-3.5 w-3.5" />
+                  {t("code.git.revert")}
+                </Button>
+              </div>
+            ) : null}
           </div>
         </div>
       )}
@@ -280,7 +313,9 @@ export function GitPanel({ workspace }: { workspace: string }) {
           ) : diffQ.data?.patch ? (
             <DiffView patch={diffQ.data.patch} />
           ) : (
-            <p className="text-xs text-muted-foreground">{t("code.noDiff")}</p>
+            // `code.noDiff` speaks of a run, and nothing here is a run: it is one file in a working
+            // tree, whose diff came back empty (a mode change, or a file staged as it is on disk).
+            <p className="text-xs text-muted-foreground">{t("code.git.noDiff")}</p>
           )}
         </div>
       ) : null}

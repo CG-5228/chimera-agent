@@ -177,12 +177,54 @@ export function Skills({ embedded = false }: { embedded?: boolean } = {}) {
 
   const rows: SkillStat[] = skills.data?.stats ?? [];
   const candidates = new Set(skills.data?.retirement_candidates ?? []);
+  const pending = rows.filter((s) => s.status === "pending").length;
+  // Five sections stack on this screen, and the one that asks something of you was the second. A
+  // line of links to each, and a notice when a learned skill waits for a decision, so neither is a
+  // scroll away.
+  const sections = [
+    { id: "skills-active", label: t("skills.active.title") },
+    { id: "skills-learned", label: t("skills.learned") },
+    { id: "skills-library", label: t("skills.library") },
+    { id: "skills-yours", label: t("skills.upload.title") },
+    { id: "skills-catalog", label: t("catalog.title") },
+  ];
 
   return (
     <Screen title={t("skills.title")} icon={<Sparkles className="h-5 w-5" />} embedded={embedded}>
+      <nav aria-label={t("skills.jumpTo")} className="flex flex-wrap gap-1.5">
+        {sections.map((s) => (
+          <a
+            key={s.id}
+            href={`#${s.id}`}
+            // The app routes on the hash, so a plain anchor would navigate away from this screen.
+            onClick={(e) => {
+              e.preventDefault();
+              document.getElementById(s.id)?.scrollIntoView({ block: "start" });
+            }}
+            className="rounded-chip border border-hairline px-2.5 py-1 text-xs text-foreground hover:bg-surface-hover"
+          >
+            {s.label}
+          </a>
+        ))}
+      </nav>
+      {pending > 0 ? (
+        <div className="flex items-center gap-3 rounded-xl2 border border-warn/40 bg-warn/10 px-4 py-2.5">
+          <span className="flex-1 text-sm text-warn-foreground">{t("skills.pendingNotice", { n: pending })}</span>
+          <button
+            type="button"
+            onClick={() => document.getElementById("skills-learned")?.scrollIntoView({ block: "start" })}
+            className="rounded-chip border border-warn/60 px-3 py-1 text-xs font-medium text-warn-foreground hover:bg-warn/15"
+          >
+            {t("skills.review")}
+          </button>
+        </div>
+      ) : null}
       {/* First, because it is the answer the three panels below only add up to: what a run started
           now is actually told. */}
-      <SkillsActiveNow />
+      <div id="skills-active" className="scroll-mt-4">
+        <SkillsActiveNow />
+      </div>
+      <div id="skills-learned" className="scroll-mt-4">
       <Panel title={t("skills.learned")}>
         {skills.isError ? (
           <ErrorState error={skills.error} onRetry={() => skills.refetch()} />
@@ -217,8 +259,11 @@ export function Skills({ embedded = false }: { embedded?: boolean } = {}) {
                     ? s.status
                     : t(`skills.status.${s.status}`)}
                 </Badge>
-                  {s.provenance === "tainted" && <Badge tone="warn">tainted</Badge>}
-                  {candidates.has(s.name) && <Badge tone="bad">retire?</Badge>}
+                  {/* Both were English literals in every language. "Unverified" is Memory's word for
+                      the same store flag; a retirement candidate is a suggestion, so amber, not the
+                      red of a failure. */}
+                  {s.provenance === "tainted" && <Badge tone="warn">{t("memory.unverified")}</Badge>}
+                  {candidates.has(s.name) && <Badge tone="warn">{t("skills.retireCandidate")}</Badge>}
                 </div>
                 <div className="mt-0.5 text-xs text-muted-foreground">
                   {t("skills.stats", { uses: s.uses, wins: s.successes })}
@@ -254,14 +299,21 @@ export function Skills({ embedded = false }: { embedded?: boolean } = {}) {
           </>
         )}
       </Panel>
+      </div>
 
-      <p className="flex items-start gap-2 text-xs text-muted-foreground">
-        <BookOpen className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        {t("skills.libraryBlurb")}
-      </p>
-      <Library />
-      <SkillUpload />
-      <SkillCatalog />
+      <div id="skills-library" className="scroll-mt-4 space-y-4">
+        <p className="flex items-start gap-2 text-xs text-muted-foreground">
+          <BookOpen className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          {t("skills.libraryBlurb")}
+        </p>
+        <Library />
+      </div>
+      <div id="skills-yours" className="scroll-mt-4">
+        <SkillUpload />
+      </div>
+      <div id="skills-catalog" className="scroll-mt-4">
+        <SkillCatalog />
+      </div>
     </Screen>
   );
 }
