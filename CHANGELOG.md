@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
 ### Added
 
 - **Your own theme, on top of light and dark.** Settings › Appearance gains three rows: an accent colour (blue, cyan,
@@ -29,6 +30,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   the button, red, with Cancel first. Each file's checkbox has a name ("Include src/a.py in the commit"); it had
   none, and an empty diff no longer claims "this run changed nothing" about a working-tree file. In Portuguese, "Preparados" and "Não rastreados" read "Vão no próximo commit"
   and "Novos (fora do git)".
+
+- **Memory and Schedule speak the app's language.** Memory kinds were printed as their identifiers ("episodic",
+  "semantic") in a monospace font on every row, and a schedule was described in English whatever the app was set to
+  ("every day at 07:00"). Kinds are now translated, and daily, weekday, weekly, hourly and every-N schedules are said
+  in the app's language ("Todo dia às 07:00"); anything rarer keeps the server's description rather than a guess.
+  The schedule's switch says "Active" or "Paused" beside it, and the memory screen's unverified count is amber
+  rather than red: it is something to review, not an error.
 
 - **The Code screen's right panel waits for a turn to describe.** Before the first turn it was a stack of empty
   panels taking a quarter of the window. It now appears when a turn starts and stays for a failed turn's tool calls;

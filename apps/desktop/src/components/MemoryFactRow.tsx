@@ -5,6 +5,7 @@ import { editMemory } from "@/lib/api";
 import { Badge } from "@/components/ui/panel";
 import { focusRing } from "@/components/ui/focus";
 import { useT } from "@/lib/i18n";
+import { memoryKindLabel } from "@/lib/memoryKind";
 import type { MemoryItem } from "@/lib/types";
 
 const iconBtn = `rounded-chip p-1 text-muted-foreground hover:text-foreground ${focusRing}`;
@@ -74,7 +75,7 @@ export function MemoryFactRow({ fact, onDelete }: { fact: MemoryItem; onDelete: 
           <div className="mt-1 text-xs text-muted-foreground">{t("memory.editKeepsLabel")}</div>
         )}
         <div className="mt-1 flex items-center gap-1.5">
-          <Badge tone={fact.kind === "persona" ? "accent" : "muted"}>{fact.kind}</Badge>
+          <Badge tone={fact.kind === "persona" ? "accent" : "muted"}>{memoryKindLabel(t, fact.kind)}</Badge>
           {fact.provenance === "tainted" && <Badge tone="warn">{t("memory.unverified")}</Badge>}
           {/* Only the exception is labelled. What the agent learns is now saved into the folder it
               was learned in, so "this one applies everywhere" is the fact worth pointing at — a badge
