@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **The Code screen's right panel waits for a turn to describe.** Before the first turn it was a stack of empty
+  panels taking a quarter of the window. It now appears when a turn starts and stays for a failed turn's tool calls;
+  its edge tab still opens it at any time, and a panel the person hid stays hidden.
 - **A compacted coding conversation keeps the title it started with.** Once a conversation compacted, the Code
   screen's sidebar titled it "[earlier conversation, compacted] N earlier messages were removed…", so long
   conversations could not be told apart, and compaction's own note counted as a turn. The title now comes from the
