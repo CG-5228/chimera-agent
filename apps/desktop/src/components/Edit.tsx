@@ -65,7 +65,15 @@ function Tab({
           : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
       )}
     >
-      <button type="button" onClick={onSelect} title={path} className={cn("py-1.5", focusRing)}>
+      {/* Named with its state: the dot beside it is the only sign this file differs from disk, and a
+          dot has no name, so a screen reader announced an unsaved file exactly like a saved one. */}
+      <button
+        type="button"
+        onClick={onSelect}
+        title={path}
+        aria-label={dirty ? t("edit.tabUnsaved", { file: baseName(path) }) : undefined}
+        className={cn("py-1.5", focusRing)}
+      >
         {baseName(path)}
       </button>
       {/* The dot is not decoration — it is the only thing on screen saying this file differs from

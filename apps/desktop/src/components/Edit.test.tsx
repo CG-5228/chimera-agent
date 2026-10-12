@@ -221,7 +221,8 @@ describe("Edit", () => {
     await user.click(screen.getByRole("button", { name: "open b.py" }));
     await waitFor(() => expect(view?.state.doc.toString()).toBe("B\n"));
 
-    await user.click(screen.getByRole("button", { name: "a.py" }));
+    // The tab names its state, since the dot beside it has no name of its own.
+    await user.click(screen.getByRole("button", { name: "a.py, unsaved changes" }));
     await waitFor(() => expect(view?.state.doc.toString()).toBe("# draft A\n"));
     // And it is still unsaved, so the save button is still the offer being made.
     expect(screen.getByRole("button", { name: /^Save$/ })).toBeInTheDocument();

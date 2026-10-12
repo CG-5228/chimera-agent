@@ -57,6 +57,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   reload and answers the back button. Profile printed each persona fact's source id ("chat", "extracted") and the
   store's "tainted" under it, in English in every language; it now says "You said it in a conversation" or "Learned
   from a conversation", marks an unverified fact with Memory's own badge, and links to Memory to correct or forget.
+
+- **An unsaved file's tab says so to a screen reader.** The editor marks a file that differs from disk with a dot,
+  which has no name, so its tab announced exactly like a saved one; it is now named "a.py, unsaved changes". In
+  Portuguese, the agent registry's "Id" field is called by what it does on the board ("Papel no quadro").
 - **A compacted coding conversation keeps the title it started with.** Once a conversation compacted, the Code
   screen's sidebar titled it "[earlier conversation, compacted] N earlier messages were removed…", so long
   conversations could not be told apart, and compaction's own note counted as a turn. The title now comes from the
