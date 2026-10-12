@@ -76,6 +76,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   label on a recent answer, sat last, under every group's calibration figures. A line at the top now says how many
   answers wait, the recent answers come first among the panels, and the calibration, review bands and predicted
   against actual fold into "Technical details".
+
+- **The design gate reads decimal font sizes.** Its pattern for arbitrary text sizes took digits only, so two
+  `text-[12.5px]` in the Code screen's viewer passed it; it now reads decimals and every length unit, and the two
+  use the scale's `text-sm`. The arbitrary-utility ceiling drops from 22 to the 7 that exist, and DESIGN.md no
+  longer points at a `tailwind.config.js` the app does not have.
 - **A compacted coding conversation keeps the title it started with.** Once a conversation compacted, the Code
   screen's sidebar titled it "[earlier conversation, compacted] N earlier messages were removed…", so long
   conversations could not be told apart, and compaction's own note counted as a turn. The title now comes from the

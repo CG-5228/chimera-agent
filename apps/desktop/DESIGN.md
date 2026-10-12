@@ -28,8 +28,9 @@ around it.
 
 ## Tokens
 
-All tokens are CSS custom properties in `src/index.css`, surfaced as Tailwind utilities in
-`tailwind.config.js`. Both themes are declared exactly once, keyed on `data-theme`.
+All tokens are CSS custom properties in `src/index.css`, surfaced as Tailwind utilities by its
+`@theme` block (Tailwind 4: there is no `tailwind.config.js` in this app). Both themes are declared
+exactly once, keyed on `data-theme`.
 
 ### Colour — semantics matter more than values
 
@@ -68,8 +69,9 @@ A drop shadow is a depth cue and it **lies** when nothing is actually in front.
 | `text-lg` | 18px | screen titles |
 | `text-xl` | 22px | hero and empty states |
 
-These override Tailwind's defaults on purpose. A sixth size is a design decision — make it in
-`tailwind.config.js`, don't smuggle it in as `text-[12px]`.
+These override Tailwind's defaults on purpose. A sixth size is a design decision — make it in the
+`@theme` block of `src/index.css`, don't smuggle it in as `text-[12px]` (or `text-[12.5px]`: the gate
+reads decimals and every length unit).
 
 The person can scale all five at once, and only that way: Settings › Appearance › Text size stamps
 `data-text-size` on `<html>`, which moves the rem root to 93.75% or 112.5%. Every size, space and
