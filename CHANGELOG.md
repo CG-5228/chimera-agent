@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 ### Fixed
 
+- **Memory and Schedule speak the app's language.** Memory kinds were printed as their identifiers ("episodic",
+  "semantic") in a monospace font on every row, and a schedule was described in English whatever the app was set to
+  ("every day at 07:00"). Kinds are now translated, and daily, weekday, weekly, hourly and every-N schedules are said
+  in the app's language ("Todo dia às 07:00"); anything rarer keeps the server's description rather than a guess.
+  The schedule's switch says "Active" or "Paused" beside it, and the memory screen's unverified count is amber
+  rather than red: it is something to review, not an error.
 - **A compacted coding conversation keeps the title it started with.** Once a conversation compacted, the Code
   screen's sidebar titled it "[earlier conversation, compacted] N earlier messages were removed…", so long
   conversations could not be told apart, and compaction's own note counted as a turn. The title now comes from the
