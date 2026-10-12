@@ -8,6 +8,7 @@ import { Code } from "@/components/Code";
 import { getFsTree, getGitStatus, getPostureFacts, getRoleModels, getRuns } from "@/lib/api";
 import { emptyTree, gitStatus, postureFacts } from "@/test/code-api-mock";
 import { renderWithProviders } from "@/test/utils";
+import { withComposerPickersOpen } from "@/test/composer";
 
 vi.mock("@/lib/api", async () => (await import("@/test/code-api-mock")).makeCodeApiMock());
 
@@ -24,6 +25,7 @@ vi.mock("@/lib/api", async () => (await import("@/test/code-api-mock")).makeCode
  */
 describe("Code — the routing profile is choosable", () => {
   beforeEach(() => {
+    withComposerPickersOpen();
     vi.mocked(getFsTree).mockResolvedValue(emptyTree());
     vi.mocked(getGitStatus).mockResolvedValue(gitStatus());
     vi.mocked(getPostureFacts).mockResolvedValue(postureFacts());
@@ -85,6 +87,7 @@ describe("Code — the routing profile is choosable", () => {
  */
 describe("Code — a model can be chosen per role", () => {
   beforeEach(() => {
+    withComposerPickersOpen();
     vi.mocked(getFsTree).mockResolvedValue(emptyTree());
     vi.mocked(getGitStatus).mockResolvedValue(gitStatus());
     vi.mocked(getPostureFacts).mockResolvedValue(postureFacts());
