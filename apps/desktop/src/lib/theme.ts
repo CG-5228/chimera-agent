@@ -123,8 +123,42 @@ export function readCodeFont(): CodeFont {
   return readPreference<CodeFont>(CODE_FONT_KEY, CODE_FONTS, "default");
 }
 
+/*
+ * Your own theme, on top of light and dark: an accent colour, the tint of the surfaces and a
+ * high-contrast option. Same mechanism again, and the same promise: each default stamps nothing, so
+ * the two shipped themes are exactly what they were. The values in `index.css` were picked by
+ * computing contrast, and `design/own-theme-is-readable.test.ts` recomputes every combination.
+ */
+
+export type Accent = "blue" | "cyan" | "green" | "amber" | "rose" | "graphite";
+export type Tint = "navy" | "neutral" | "warm";
+export type Contrast = "standard" | "high";
+
+export const ACCENT_KEY = "chimera.accent";
+export const TINT_KEY = "chimera.tint";
+export const CONTRAST_KEY = "chimera.contrast";
+
+/** No purple or indigo: that is a house rule of this design system, not an omission. */
+export const ACCENTS: readonly Accent[] = ["blue", "cyan", "green", "amber", "rose", "graphite"];
+export const TINTS: readonly Tint[] = ["navy", "neutral", "warm"];
+export const CONTRASTS: readonly Contrast[] = ["standard", "high"];
+
+export function readAccent(): Accent {
+  return readPreference<Accent>(ACCENT_KEY, ACCENTS, "blue");
+}
+
+export function readTint(): Tint {
+  return readPreference<Tint>(TINT_KEY, TINTS, "navy");
+}
+
+export function readContrast(): Contrast {
+  return readPreference<Contrast>(CONTRAST_KEY, CONTRASTS, "standard");
+}
+
+type Stamped = "textSize" | "font" | "fontCode" | "accent" | "tint" | "contrast";
+
 /** Stamp an explicit value; remove the attribute for the default, so the default is today's page. */
-function stamp(attribute: "textSize" | "font" | "fontCode", value: string, fallback: string): void {
+function stamp(attribute: Stamped, value: string, fallback: string): void {
   const root = document.documentElement;
   if (value === fallback) delete root.dataset[attribute];
   else root.dataset[attribute] = value;
@@ -148,7 +182,34 @@ export function applyCodeFont(font: CodeFont): void {
   writePreference(CODE_FONT_KEY, font);
 }
 
-const APPEARANCE_KEYS: readonly string[] = [THEME_KEY, MOTION_KEY, TEXT_SIZE_KEY, UI_FONT_KEY, CODE_FONT_KEY];
+/** `data-accent` swaps the accent tokens, in each theme's own lightness. */
+export function applyAccent(accent: Accent): void {
+  stamp("accent", accent, "blue");
+  writePreference(ACCENT_KEY, accent);
+}
+
+/** `data-tint` swaps the surface tokens: page, cards, fields and the lines between them. */
+export function applyTint(tint: Tint): void {
+  stamp("tint", tint, "navy");
+  writePreference(TINT_KEY, tint);
+}
+
+/** `data-contrast` strengthens secondary text and hairlines; it never touches the accent. */
+export function applyContrast(contrast: Contrast): void {
+  stamp("contrast", contrast, "standard");
+  writePreference(CONTRAST_KEY, contrast);
+}
+
+const APPEARANCE_KEYS: readonly string[] = [
+  THEME_KEY,
+  MOTION_KEY,
+  TEXT_SIZE_KEY,
+  UI_FONT_KEY,
+  CODE_FONT_KEY,
+  ACCENT_KEY,
+  TINT_KEY,
+  CONTRAST_KEY,
+];
 
 /**
  * Paint every stored preference without writing any of them back.
@@ -165,6 +226,9 @@ export function paintStoredAppearance(): void {
   stamp("textSize", readTextSize(), "medium");
   stamp("font", readUiFont(), "system");
   stamp("fontCode", readCodeFont(), "default");
+  stamp("accent", readAccent(), "blue");
+  stamp("tint", readTint(), "navy");
+  stamp("contrast", readContrast(), "standard");
 }
 
 /**

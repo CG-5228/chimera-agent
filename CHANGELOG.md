@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Added
+
+- **Your own theme, on top of light and dark.** Settings › Appearance gains three rows: an accent colour (blue, cyan,
+  green, amber, rose or graphite), the tint of the surfaces (navy, neutral or warm) and a high-contrast option. Each
+  default is the shipped theme exactly, and every one of the 72 combinations is checked by a test that computes its
+  contrast from `index.css`: text at 4.5:1 on the page, on a card and on its own badge wash, and the text on a filled
+  accent button at 3:1.
+
 ### Changed
 
 - **The rail names its destinations, and the composer starts as one line.** The desktop app's left rail now writes
