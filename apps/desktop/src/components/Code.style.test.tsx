@@ -7,6 +7,7 @@ import { emptyTree, gitStatus, postureFacts, scriptTurn } from "@/test/code-api-
 import { WORKSPACE_KEY, writeLastSession } from "@/lib/workspace";
 import type { OutputStyle } from "@/lib/types";
 import { renderWithProviders } from "@/test/utils";
+import { withComposerPickersOpen } from "@/test/composer";
 
 vi.mock("@/lib/api", async () => (await import("@/test/code-api-mock")).makeCodeApiMock());
 
@@ -18,6 +19,7 @@ vi.mock("@/lib/api", async () => (await import("@/test/code-api-mock")).makeCode
 describe("Code — the conversation's output style", () => {
   beforeEach(() => {
     localStorage.setItem(WORKSPACE_KEY, "/repo");
+    withComposerPickersOpen();
     vi.mocked(getFsTree).mockResolvedValue(emptyTree());
     vi.mocked(getGitStatus).mockResolvedValue(gitStatus());
     vi.mocked(getRuns).mockResolvedValue([]);

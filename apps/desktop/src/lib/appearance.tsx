@@ -1,18 +1,27 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import {
+  applyAccent,
   applyCodeFont,
+  applyContrast,
+  applyTint,
   applyMotion,
   applyTextSize,
   applyTheme,
   applyUiFont,
+  readAccent,
   readCodeFont,
+  readContrast,
+  readTint,
   readMotion,
   readTextSize,
   readTheme,
   readUiFont,
   resolveTheme,
+  type Accent,
   type CodeFont,
+  type Contrast,
+  type Tint,
   type Motion,
   type TextSize,
   type Theme,
@@ -36,6 +45,12 @@ interface AppearanceApi {
   setUiFont: (font: UiFont) => void;
   codeFont: CodeFont;
   setCodeFont: (font: CodeFont) => void;
+  accent: Accent;
+  setAccent: (accent: Accent) => void;
+  tint: Tint;
+  setTint: (tint: Tint) => void;
+  contrast: Contrast;
+  setContrast: (contrast: Contrast) => void;
 }
 
 const AppearanceContext = createContext<AppearanceApi | null>(null);
@@ -58,6 +73,9 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   const [textSize, setTextSize] = useState<TextSize>(readTextSize);
   const [uiFont, setUiFont] = useState<UiFont>(readUiFont);
   const [codeFont, setCodeFont] = useState<CodeFont>(readCodeFont);
+  const [accent, setAccent] = useState<Accent>(readAccent);
+  const [tint, setTint] = useState<Tint>(readTint);
+  const [contrast, setContrast] = useState<Contrast>(readContrast);
 
   useEffect(() => {
     setDark(applyTheme(theme) === "dark");
@@ -77,6 +95,9 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   useEffect(() => applyTextSize(textSize), [textSize]);
   useEffect(() => applyUiFont(uiFont), [uiFont]);
   useEffect(() => applyCodeFont(codeFont), [codeFont]);
+  useEffect(() => applyAccent(accent), [accent]);
+  useEffect(() => applyTint(tint), [tint]);
+  useEffect(() => applyContrast(contrast), [contrast]);
 
   const value = useMemo<AppearanceApi>(
     () => ({
@@ -92,8 +113,14 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
       setUiFont,
       codeFont,
       setCodeFont,
+      accent,
+      setAccent,
+      tint,
+      setTint,
+      contrast,
+      setContrast,
     }),
-    [theme, dark, motion, textSize, uiFont, codeFont],
+    [theme, dark, motion, textSize, uiFont, codeFont, accent, tint, contrast],
   );
   return <AppearanceContext.Provider value={value}>{children}</AppearanceContext.Provider>;
 }

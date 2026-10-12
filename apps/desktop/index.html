@@ -38,6 +38,13 @@
         if (f !== "system") d.dataset.font = f;
         var c = pick("chimera.codeFont", ["default", "cascadia", "jetbrains"], "default");
         if (c !== "default") d.dataset.fontCode = c;
+        // Your own theme: accent, surface tint, contrast. Defaults stamp nothing, as above.
+        var a = pick("chimera.accent", ["blue", "cyan", "green", "amber", "rose", "graphite"], "blue");
+        if (a !== "blue") d.dataset.accent = a;
+        var n = pick("chimera.tint", ["navy", "neutral", "warm"], "navy");
+        if (n !== "navy") d.dataset.tint = n;
+        var k = pick("chimera.contrast", ["standard", "high"], "standard");
+        if (k !== "standard") d.dataset.contrast = k;
       })();
     </script>
   </head>

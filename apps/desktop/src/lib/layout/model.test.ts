@@ -195,7 +195,10 @@ describe("the default layout", () => {
   it("is today's screen: every panel open, in its home zone, and every region shown", () => {
     const layout = defaultLayout();
     for (const id of PANEL_IDS) {
-      expect(layout.panels[id]).toMatchObject({ zone: PANELS[id].zone, mode: "open" });
+      // The composer's pickers are the exception: they start as their line of chips, which is still
+      // on screen and opens with a click — so nothing is hidden, and `hiddenItems` stays empty.
+      const mode = id === "composer.config" ? "minimized" : "open";
+      expect(layout.panels[id]).toMatchObject({ zone: PANELS[id].zone, mode });
     }
     expect(Object.values(layout.regions).every((r) => r.visible)).toBe(true);
     expect(hiddenItems(layout)).toEqual([]);

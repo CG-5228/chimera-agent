@@ -354,6 +354,9 @@ function Workspace() {
         // inside itself (grouped by project, which the flat chat list could not do), so the left
         // slot stays empty rather than holding a second list of the same thing.
         inspector={view === "code" ? <Activity /> : undefined}
+        // Before the first turn the activity column was a stack of empty panels taking a quarter of
+        // the screen; it now appears when there is a turn to watch.
+        inspectorFollowsAgent={view === "code"}
         // Left = what exists. On the editor screen that is the folder you are working in — the one
         // place in the app where finding the file IS the task rather than a detour from it.
         context={
