@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Changed
+
+- **The rail names its destinations, and the composer starts as one line.** The desktop app's left rail now writes
+  each destination's name under its icon; it was a column of five icons named only on hover. The Code screen's
+  pickers (who runs the turn, cost profile, model, style) start as their line of chips, and the whole line opens
+  them; they used to take four rows above the message box. Armed "Fuse" and "Plan first" read as pressed outlines,
+  so Send is the one filled button in the row, and the "no OS sandbox" note is amber rather than red: it is a
+  condition to know, not a failure.
+
 ### Fixed
 
 - **A compacted coding conversation keeps the title it started with.** Once a conversation compacted, the Code
