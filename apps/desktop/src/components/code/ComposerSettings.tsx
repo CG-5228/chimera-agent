@@ -42,16 +42,31 @@ export function ComposerSettings({ summary, children }: { summary: string[]; chi
   );
 
   if (minimized) {
+    // The chips and the chevron are one button. Minimised is the default now, so this line is how
+    // every change of model or profile begins — and a 14-pixel chevron at the far end was the only
+    // part of it that answered a click (Fitts: the target is the thing you are already looking at).
     return (
-      <div className="flex min-w-0 items-center gap-1.5" data-testid="composer-settings-line">
-        <div className="flex min-w-0 flex-1 flex-wrap gap-1">
-          {summary.map((chip) => (
-            <span key={chip} className="rounded-chip border border-hairline px-2 py-0.5 text-xs text-muted-foreground">
-              {chip}
-            </span>
-          ))}
-        </div>
-        {toggle}
+      <div className="flex min-w-0 items-center" data-testid="composer-settings-line">
+        <Tooltip label={label}>
+          <button
+            type="button"
+            aria-label={label}
+            aria-expanded={false}
+            onClick={() => dispatch({ type: "set-mode", panel: "composer.config", mode: "open" })}
+            className={cn(
+              "flex min-w-0 flex-wrap items-center gap-1 rounded-chip p-0.5 text-left",
+              "transition-colors duration-1 ease-out hover:bg-surface-hover",
+              focusRing,
+            )}
+          >
+            {summary.map((chip) => (
+              <span key={chip} className="rounded-chip border border-hairline px-2 py-0.5 text-xs text-foreground">
+                {chip}
+              </span>
+            ))}
+            <ChevronDown aria-hidden className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          </button>
+        </Tooltip>
       </div>
     );
   }

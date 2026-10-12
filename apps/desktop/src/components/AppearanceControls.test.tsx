@@ -3,8 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  AccentPicker,
   CodeFontSelect,
+  ContrastSelect,
   MotionSelect,
+  TintSelect,
   TextSizeSelect,
   ThemeSelect,
   TranscriptWidthSelect,
@@ -13,7 +16,7 @@ import {
 import { IconRail } from "@/components/IconRail";
 import { useAppearance } from "@/lib/appearance";
 import { STORAGE_KEY } from "@/lib/layout/store";
-import { THEME_KEY, UI_FONT_KEY } from "@/lib/theme";
+import { ACCENT_KEY, THEME_KEY, UI_FONT_KEY } from "@/lib/theme";
 import { renderWithProviders } from "@/test/utils";
 
 /**
@@ -207,5 +210,60 @@ describe("the defaults", () => {
     expect(screen.getByRole("combobox", { name: "Code font" })).toHaveValue("default");
     const root = document.documentElement.dataset;
     expect([root.motion, root.textSize, root.font, root.fontCode]).toEqual([undefined, undefined, undefined, undefined]);
+  });
+});
+
+describe("your own theme", () => {
+  afterEach(() => {
+    localStorage.clear();
+    const d = document.documentElement.dataset;
+    delete d.accent;
+    delete d.tint;
+    delete d.contrast;
+  });
+
+  it("picks an accent by clicking its swatch, and names every swatch", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AccentPicker name="Accent colour" />);
+
+    const group = screen.getByRole("radiogroup", { name: "Accent colour" });
+    expect(screen.getAllByRole("radio")).toHaveLength(6);
+    expect(screen.getByRole("radio", { name: "Blue" })).toHaveAttribute("aria-checked", "true");
+    // The default stamps nothing, so the shipped theme is untouched until someone chooses.
+    expect(document.documentElement.dataset.accent).toBeUndefined();
+
+    await user.click(screen.getByRole("radio", { name: "Green" }));
+    expect(document.documentElement.dataset.accent).toBe("green");
+    expect(localStorage.getItem(ACCENT_KEY)).toBe("green");
+    expect(group).toBeInTheDocument();
+  });
+
+  it("moves the choice with the arrow keys, like any radio group", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AccentPicker name="Accent colour" />);
+
+    // One tab stop: the chosen swatch.
+    await user.tab();
+    expect(screen.getByRole("radio", { name: "Blue" })).toHaveFocus();
+    await user.keyboard("{ArrowRight}");
+    expect(screen.getByRole("radio", { name: "Cyan" })).toHaveFocus();
+    expect(document.documentElement.dataset.accent).toBe("cyan");
+    // And it wraps, so the last colour is one key away from the first.
+    await user.keyboard("{ArrowLeft}{ArrowLeft}");
+    expect(document.documentElement.dataset.accent).toBe("graphite");
+  });
+
+  it("sets the surface tint and the contrast", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(
+      <>
+        <TintSelect name="Background" />
+        <ContrastSelect name="Contrast" />
+      </>,
+    );
+    await user.selectOptions(screen.getByRole("combobox", { name: "Background" }), "warm");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Contrast" }), "high");
+    expect(document.documentElement.dataset.tint).toBe("warm");
+    expect(document.documentElement.dataset.contrast).toBe("high");
   });
 });
