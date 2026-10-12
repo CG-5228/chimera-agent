@@ -43,6 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   failed, paused) with a count on each; the earlier attempts of a run fold under the one that decided it; and twenty
   runs are drawn before "Show older runs".
 
+- **"Was it worth it?" says when it could not ask.** A failed request rendered exactly like "no runs yet", which on a
+  screen about evidence reads as a finding; it now shows the error with a retry, and a spinner while loading. The
+  table is set at body size, and the stray divider from the panel's old place under the conversation is gone. The
+  panel still ranks nothing.
+
 - **The Code screen's right panel waits for a turn to describe.** Before the first turn it was a stack of empty
   panels taking a quarter of the window. It now appears when a turn starts and stays for a failed turn's tool calls;
   its edge tab still opens it at any time, and a panel the person hid stays hidden.
