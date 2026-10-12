@@ -15,6 +15,7 @@ import {
 import { emptyTree, gitStatus, modelOption, postureFacts, scriptTurn } from "@/test/code-api-mock";
 import { WORKSPACE_KEY } from "@/lib/workspace";
 import { renderWithProviders } from "@/test/utils";
+import { withComposerPickersOpen } from "@/test/composer";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 vi.mock("@/lib/api", async () => (await import("@/test/code-api-mock")).makeCodeApiMock());
@@ -73,6 +74,7 @@ function doctorWith(agents: { key: string; label: string }[] = []) {
 describe("Code — choosing the model", () => {
   beforeEach(() => {
     localStorage.setItem(WORKSPACE_KEY, "/repo");
+    withComposerPickersOpen();
     vi.mocked(getFsTree).mockResolvedValue(emptyTree());
     vi.mocked(getGitStatus).mockResolvedValue(gitStatus());
     vi.mocked(getRuns).mockResolvedValue([]);

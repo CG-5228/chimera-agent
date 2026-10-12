@@ -125,7 +125,10 @@ export function PostureNote({
         // only one there was, and once the default became `auto` it started appearing on machines
         // where nobody configured a container and no daemon would help — right conclusion, invented
         // reason, and it sent people to start Docker to fix something Docker does not fix.
-        <p className="flex items-start gap-1.5 text-xs text-bad-foreground">
+        // Amber, not red: red is kept for something that failed, and nothing has — this is a
+        // condition to know before typing. A permanent red line under the box taught people to
+        // stop reading red.
+        <p className="flex items-start gap-1.5 text-xs text-warn-foreground">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           {facts.data.fell_back_reason === "no_os_sandbox"
             ? t("code.posture.fellBackNoSandbox")

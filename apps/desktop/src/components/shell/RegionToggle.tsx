@@ -70,8 +70,9 @@ export function HideRegionButton({ side, className }: { side: Side; className?: 
   );
 }
 
-/** The narrow tab a hidden region leaves on its edge. Clicking it shows the region again. */
-export function EdgeTab({ side }: { side: Side }) {
+/** The narrow tab a hidden region leaves on its edge. Clicking it shows the region again — or, with
+ *  `onShow`, does what the caller says instead (the right panel standing aside while idle peeks). */
+export function EdgeTab({ side, onShow }: { side: Side; onShow?: () => void }) {
   const t = useT();
   const { dispatch } = useLayout();
   const label = t(SHOW_KEY[side]);
@@ -83,7 +84,7 @@ export function EdgeTab({ side }: { side: Side }) {
         type="button"
         id={edgeTabId(side)}
         aria-label={label}
-        onClick={() => dispatch({ type: "set-region", region: side, visible: true })}
+        onClick={onShow ?? (() => dispatch({ type: "set-region", region: side, visible: true }))}
         className={cn(
           "flex h-14 w-3.5 shrink-0 items-center justify-center self-center border-hairline bg-card",
           "text-muted-foreground transition-colors duration-1 ease-out hover:bg-surface-hover hover:text-foreground",

@@ -145,7 +145,7 @@ describe("where a drop lands", () => {
 describe("the composer's settings", () => {
   beforeEach(() => localStorage.clear());
 
-  it("minimise to one line of chips, and come back", async () => {
+  it("start as one line of chips, open with a click on that line, and minimise again", async () => {
     const user = userEvent.setup();
     renderWithProviders(
       <ComposerSettings summary={["Chimera", "balanced", "gpt-6-luna"]}>
@@ -153,11 +153,16 @@ describe("the composer's settings", () => {
       </ComposerSettings>,
     );
 
-    await user.click(screen.getByRole("button", { name: "Minimize Who runs, cost and model" }));
     expect(screen.queryByText("the pickers")).not.toBeInTheDocument();
     expect(screen.getByTestId("composer-settings-line")).toHaveTextContent("Chimerabalancedgpt-6-luna");
 
-    await user.click(screen.getByRole("button", { name: "Expand Who runs, cost and model" }));
+    // The chips ARE the button: the whole line is the target, not a 14-pixel chevron at its end.
+    const line = screen.getByRole("button", { name: "Expand Who runs, cost and model" });
+    expect(line).toHaveTextContent("gpt-6-luna");
+    await user.click(line);
     expect(screen.getByText("the pickers")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Minimize Who runs, cost and model" }));
+    expect(screen.queryByText("the pickers")).not.toBeInTheDocument();
   });
 });
