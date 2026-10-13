@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Unattended surfaces deny rea's target-changing tools.** Messaging, cron, A2A, MCP and GitHub-issue jobs
+  remove rea tools that execute code or mutate a target, matched from the configured MCP server name or
+  command. They cannot ask a person to approve those actions, so they must not run them unattended.
+
 - **MCP servers can set per-server call and connection timeouts.** Configure `call_timeout` and `connect_timeout` for
   a server instead of relying on shared limits. Slow servers, such as one running a long headless analysis, could
   exceed the fixed 120-second call timeout; per-server limits let that work take longer when needed.

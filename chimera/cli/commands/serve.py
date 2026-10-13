@@ -628,11 +628,18 @@ def desktop_app(
         # has to be told what it will remove — otherwise `execute_code` is already behind
         # `tool_call` when the guard looks for it, and stays reachable there.
         from chimera.api.posture import chat_guard_denials
+        from chimera.governance.mcp_readonly import read_only_denials
 
+        extra = [] if guarded else read_only_denials(live)
+        deny_arg = (
+            ",".join(sorted({*live.tool_denylist, *extra}))
+            if not guarded and (live.tool_denylist or extra)
+            else None
+        )
         registry = _apply_tool_allowlist(
             registry,
             allow=None,
-            deny=None,
+            deny=deny_arg,
             settings=live,
             later_denials=chat_guard_denials() if guarded and live.guard_chat else None,
         )
