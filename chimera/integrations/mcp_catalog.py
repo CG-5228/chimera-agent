@@ -80,6 +80,10 @@ class CatalogEntry:
     #: ``secrets``) or ``url`` (a connection string in ``secrets`` that carries the credential).
     #: Without it, "asks for nothing" and "somebody forgot to list the token" read the same.
     auth: str = "oauth"
+    #: Tools that execute code or mutate the target; unattended surfaces remove these by name.
+    exec_tools: tuple[str, ...] = ()
+    #: Package token used when the configured server name differs from the catalogue id.
+    match: str = ""
 
 
 #: The default GitHub entry runs the official server through Docker, and the reason is the strongest
@@ -373,6 +377,53 @@ _HOSTINGER = CatalogEntry(
 )
 
 
+_REA = CatalogEntry(
+    id="rea",
+    label="rea (engenharia reversa)",
+    summary="Inspecione binários, processos e aplicações por meio de ferramentas de engenharia reversa.",
+    runner="npx",
+    command="npx",
+    args=["-y", "--package=rea-agents@6.4.0", "rea", "mcp"],
+    official=True,
+    auth="none",
+    match="rea-agents",
+    exec_tools=(
+        "annotate_native_function",
+        "capture_browser_scenario",
+        "capture_electron_scenario",
+        "capture_native_ui_scenario",
+        "capture_process_scenario",
+        "close_frida_session",
+        "install_adb_package",
+        "instrument_with_frida",
+        "load_frida_script",
+        "observe_native_calls",
+        "observe_web_execution",
+        "push_adb_file",
+        "resume_frida_session",
+        "set_address_name",
+        "set_addresses_names",
+        "set_bookmark",
+        "set_comment",
+        "set_inline_comment",
+        "start_adb_activity",
+        "start_adb_app",
+        "start_frida_session",
+        "stop_adb_app",
+        "uninstall_adb_package",
+        "unload_frida_script",
+        "unset_bookmark",
+    ),
+    containment=(
+        "Ghidra is free; IDA, Hopper and JEB are paid engines and are opt-in via environment "
+        "variables. Ghidra does not run without GHIDRA_INSTALL_DIR and JAVA_HOME. The 25 tools "
+        "that execute or alter a target are denied outside desktop and terminal surfaces. Requires "
+        "Node.js 22 or newer."
+    ),
+    docs="https://www.npmjs.com/package/rea-agents",
+)
+
+
 CATALOG: tuple[CatalogEntry, ...] = (
     _GITHUB_DOCKER,
     _GITHUB_BINARY,
@@ -382,6 +433,7 @@ CATALOG: tuple[CatalogEntry, ...] = (
     _NOTION,
     _SENTRY,
     _HOSTINGER,
+    _REA,
     *(_alchemy(*db) for db in _ALCHEMY_DBS),
 )
 

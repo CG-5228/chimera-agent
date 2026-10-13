@@ -269,10 +269,12 @@ class StreamableHTTPMCPSession:
         *,
         headers: dict[str, str] | None = None,
         connect_timeout: float = 30.0,
+        call_timeout: float = 120.0,
     ) -> None:
         self.url = url
         self.headers = headers or {}
         self.connect_timeout = connect_timeout
+        self.call_timeout = call_timeout
         self._loop: Any = None
         self._thread: Any = None
         self._session: Any = None
@@ -285,7 +287,12 @@ class StreamableHTTPMCPSession:
 
     @classmethod
     def from_config(
-        cls, cfg: Any, *, connect_timeout: float = 30.0, interactive: bool = False
+        cls,
+        cfg: Any,
+        *,
+        connect_timeout: float = 30.0,
+        call_timeout: float = 120.0,
+        interactive: bool = False,
     ) -> StreamableHTTPMCPSession:
         """Resolve a configured environment token or a stored OAuth token.
 
@@ -315,7 +322,12 @@ class StreamableHTTPMCPSession:
                 )
             token = stored_token or _oauth_authorization_code(cfg, timeout=connect_timeout)
             headers["Authorization"] = f"Bearer {token}"
-        return cls(cfg.url, headers=headers, connect_timeout=connect_timeout)
+        return cls(
+            cfg.url,
+            headers=headers,
+            connect_timeout=connect_timeout,
+            call_timeout=call_timeout,
+        )
 
     def start(self) -> StreamableHTTPMCPSession:
         import asyncio
@@ -385,7 +397,7 @@ class StreamableHTTPMCPSession:
         try:
             result = asyncio.run_coroutine_threadsafe(
                 self._session.call_tool(name, arguments), self._loop
-            ).result(timeout=120)
+            ).result(timeout=self.call_timeout)
         except Exception as exc:  # noqa: BLE001 — SDK errors can contain request headers
             raise RuntimeError(f"MCP HTTP tool call failed ({type(exc).__name__})") from None
         text = _content_to_text(result)
@@ -518,11 +530,13 @@ class StdioMCPSession:
         env: dict[str, str] | None = None,
         *,
         connect_timeout: float = 30.0,
+        call_timeout: float = 120.0,
     ) -> None:
         self.command = command
         self.args = args or []
         self.env = env
         self.connect_timeout = connect_timeout
+        self.call_timeout = call_timeout
         self._loop: Any = None
         self._thread: Any = None
         self._session: Any = None
@@ -637,7 +651,7 @@ class StdioMCPSession:
         future = asyncio.run_coroutine_threadsafe(
             self._session.call_tool(name, arguments), self._loop
         )
-        result = future.result(timeout=120)
+        result = future.result(timeout=self.call_timeout)
         text = _content_to_text(result)
         # Per the MCP spec a tool-execution failure comes back as a normal result with isError=True
         # (not a protocol error). Surface it as an `error:` observation so the agent can tell a real

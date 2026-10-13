@@ -179,7 +179,7 @@ def test_no_secret_value_is_ever_baked_in() -> None:
 # names; its README says one binary where the package ships twelve).
 
 _NOVAS = ("stripe", "notion", "sentry", "hostinger")
-_AUTH = {"oauth", "login", "key", "url"}
+_AUTH = {"oauth", "login", "key", "url", "none"}
 
 
 def test_every_entry_declares_how_it_signs_in() -> None:

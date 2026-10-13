@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Unattended surfaces deny rea's target-changing tools.** Messaging, cron, A2A, MCP and GitHub-issue jobs
+  remove rea tools that execute code or mutate a target, matched from the configured MCP server name or
+  command. They cannot ask a person to approve those actions, so they must not run them unattended.
+
+- **MCP servers can set per-server call and connection timeouts.** Configure `call_timeout` and `connect_timeout` for
+  a server instead of relying on shared limits. Slow servers, such as one running a long headless analysis, could
+  exceed the fixed 120-second call timeout; per-server limits let that work take longer when needed.
+
 ### Fixed
 
 - **The Task tab says what each way of running is for, and puts Run first.** The four modes were four small chips with
@@ -13,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   first" come straight after the task, Run the only filled button, and what tunes the run (who writes the patch,
   attempts, the three seams, the pause on untrusted content) is folded under "Options", whose summary line says what
   is currently set. Nothing was removed.
+
+- **The rail's labels fit on one line.** In the installed 0.66.0 "Conhecimento" and "Configurações" broke mid-word onto
+  two lines under their icons (the label was 64px wide). The rail is a little wider so the longest Portuguese names fit.
 - **The catalogue knows the price `glm-5.3-flash` moved to.** The live check on main (`test_catalog_is_live`) went red
   on 2026-10-12: the index quotes 0.0232 in / 1.20 out against the row's 0.045 / 0.60. The row now carries the higher
   output figure, so a fallback never reads low, and both the old and the new readings join `also_seen`.

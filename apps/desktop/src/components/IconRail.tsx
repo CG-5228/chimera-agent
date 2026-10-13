@@ -96,7 +96,10 @@ function RailButton({
           // tooltip that named them appeared only on hover — recognition beats recall (Jakob, and
           // every desktop app the person already uses labels its rail).
           "relative flex flex-col items-center justify-center gap-1 rounded-xl2",
-          showLabel ? "w-16 py-1.5" : "h-11 w-11",
+          // 5rem, not 4, and no side padding on the label: "Conhecimento" is 76px of text, and at 4rem
+          // it and "Configurações" broke mid-word onto two lines in the installed app (measured: the
+          // label was 64px wide and 27px tall).
+          showLabel ? "w-20 py-1.5" : "h-11 w-11",
           "transition-all duration-1 ease-out",
           // The app's primary navigation had no focus indicator at all: a keyboard user could tab
           // through fifteen destinations with nothing on screen telling them where they were.
@@ -111,7 +114,7 @@ function RailButton({
           // Two lines at most: "Automatización" and "Konfiguration" do not fit one at this width,
           // and a label cut to "Autom…" names nothing. `aria-hidden`: the button already carries
           // the same text as its accessible name, and a screen reader would read it twice.
-          <span aria-hidden className="line-clamp-2 max-w-full break-words px-0.5 text-center text-xs leading-tight">
+          <span aria-hidden className="line-clamp-2 max-w-full break-words text-center text-xs leading-tight">
             {label}
           </span>
         ) : null}
@@ -138,7 +141,7 @@ export function IconRail({
   return (
     <div
       {...(ignite && { "data-ignite": "rail" })}
-      className="flex w-20 shrink-0 flex-col items-center gap-1 border-r border-hairline bg-card/40 py-3"
+      className="flex w-24 shrink-0 flex-col items-center gap-1 border-r border-hairline bg-card/40 py-3"
     >
       <BrandMark className="mb-2 h-8 w-8" glow {...(ignite && { "data-ignite": "mark" })} />
       <nav className="flex flex-1 flex-col items-center gap-1.5">
