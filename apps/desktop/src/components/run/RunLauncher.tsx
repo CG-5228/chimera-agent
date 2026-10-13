@@ -319,71 +319,23 @@ export function RunLauncher({
           ) : null}
         </div>
       ) : null}
-      {/* Beside the attempt budget rather than behind a settings screen: which model writes the
-          patch is a property of THIS run, and the receipt it produces is grouped by it. */}
-      <div className="border-t border-hairline pt-3">
-        <RolesBar
-          profile={profile}
-          onProfile={(p) => {
-            setProfile(p);
-            setTouched(true);
-          }}
-          override={roles}
-          onOverride={(o) => {
-            setRoles(o);
-            setTouched(true);
-          }}
-          oneModel={oneModel}
-          onOneModel={setOneModel}
-          disabled={running}
-        />
-      </div>
-      {/* `flex-wrap`: this row grew two checkboxes and a second button, and without wrapping the
-          last item is squeezed until its label breaks. Reflowing is the behaviour that survives the
-          next control somebody adds — and the next translation, which may be longer than this one. */}
+      {/* The two things you came to do come first, and Run is the only filled button: one primary
+          action on the screen. "See the plan first" sits beside it rather than instead of it —
+          someone who knows what they want should not have to click twice, and someone who does not
+          should not have to find out by watching files change. The label says what it costs: one
+          call, no tools, nothing written. */}
       <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          {t("runs.maxAttempts")}
-          <input
-            type="number"
-            min={1}
-            max={10}
-            className="field h-9 w-16 px-2 text-sm"
-            value={maxAttempts}
-            onChange={(e) => setMaxAttempts(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
-            disabled={running}
-          />
-        </label>
-        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={knowsRepo}
-            onChange={(e) => setKnowsRepo(e.target.checked)}
-            disabled={running}
-          />
-          {t("runs.seams.knowsRepo")}
-        </label>
-        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={replan}
-            onChange={(e) => setReplan(e.target.checked)}
-            disabled={running}
-          />
-          {t("runs.seams.replan")}
-        </label>
-        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={requireDiff}
-            onChange={(e) => setRequireDiff(e.target.checked)}
-            disabled={running}
-          />
-          {t("runs.seams.requireDiff")}
-        </label>
-        {/* Beside Run rather than instead of it. Someone who knows what they want should not have
-            to click twice, and someone who does not should not have to find out by watching files
-            change. The label says what it costs: one call, no tools, nothing written. */}
+        <Button size="sm" disabled={!task.trim() || running} onClick={start}>
+          {running ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" /> {t("runs.running")}
+            </>
+          ) : (
+            <>
+              <Play className="h-4 w-4" /> {t("runs.run")}
+            </>
+          )}
+        </Button>
         <Button
           size="sm"
           variant="outline"
@@ -397,17 +349,6 @@ export function RunLauncher({
           ) : (
             <>
               <ListChecks className="h-4 w-4" /> {t("runs.plan.show")}
-            </>
-          )}
-        </Button>
-        <Button size="sm" disabled={!task.trim() || running} onClick={start}>
-          {running ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" /> {t("runs.running")}
-            </>
-          ) : (
-            <>
-              <Play className="h-4 w-4" /> {t("runs.run")}
             </>
           )}
         </Button>
@@ -429,19 +370,95 @@ export function RunLauncher({
           </button>
         )}
       </div>
-      <div className="flex items-center gap-2">
-        <Switch
-          checked={pauseOnTaint}
-          onChange={setPauseOnTaint}
-          label={t("runs.pauseOnTaint")}
-          disabled={running}
-        />
-        {/* aria-hidden: the switch already carries this exact text as its accessible name, and a
-            screen reader would otherwise read the whole sentence twice. */}
-        <span aria-hidden className="text-xs text-muted-foreground">
-          {t("runs.pauseOnTaint")}
-        </span>
-      </div>
+
+      {/* Everything that tunes the run, folded, with what is currently set on the summary line so a
+          closed block still says what it holds. Nothing was removed: roles, attempts, the three
+          seams and the pause are all here, one click away. */}
+      <details className="rounded-xl2 border border-hairline">
+        <summary className="cursor-pointer px-3 py-2 text-sm">
+          <span className="font-medium">{t("runs.options")}</span>{" "}
+          <span className="text-xs text-muted-foreground">
+            {t("runs.options.summary", { n: maxAttempts, profile: t(`code.roles.profile.${profile}`) })}
+            {pauseOnTaint ? ` · ${t("runs.options.pauses")}` : ""}
+          </span>
+        </summary>
+        <div className="space-y-3 border-t border-hairline p-3">
+          {/* Beside the attempt budget rather than behind a settings screen: which model writes the
+              patch is a property of THIS run, and the receipt it produces is grouped by it. */}
+          <RolesBar
+            profile={profile}
+            onProfile={(p) => {
+              setProfile(p);
+              setTouched(true);
+            }}
+            override={roles}
+            onOverride={(o) => {
+              setRoles(o);
+              setTouched(true);
+            }}
+            oneModel={oneModel}
+            onOneModel={setOneModel}
+            disabled={running}
+          />
+          {/* `flex-wrap`: this row grew checkboxes over time, and without wrapping the last item is
+              squeezed until its label breaks. Reflowing survives the next control and the next
+              translation, which may be longer than this one. */}
+          <div className="flex flex-wrap items-center gap-3 border-t border-hairline pt-3">
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              {t("runs.maxAttempts")}
+              <input
+                type="number"
+                min={1}
+                max={10}
+                className="field h-9 w-16 px-2 text-sm"
+                value={maxAttempts}
+                onChange={(e) => setMaxAttempts(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
+                disabled={running}
+              />
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={knowsRepo}
+                onChange={(e) => setKnowsRepo(e.target.checked)}
+                disabled={running}
+              />
+              {t("runs.seams.knowsRepo")}
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={replan}
+                onChange={(e) => setReplan(e.target.checked)}
+                disabled={running}
+              />
+              {t("runs.seams.replan")}
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={requireDiff}
+                onChange={(e) => setRequireDiff(e.target.checked)}
+                disabled={running}
+              />
+              {t("runs.seams.requireDiff")}
+            </label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={pauseOnTaint}
+              onChange={setPauseOnTaint}
+              label={t("runs.pauseOnTaint")}
+              disabled={running}
+            />
+            {/* aria-hidden: the switch already carries this exact text as its accessible name, and a
+                screen reader would otherwise read the whole sentence twice. */}
+            <span aria-hidden className="text-xs text-muted-foreground">
+              {t("runs.pauseOnTaint")}
+            </span>
+          </div>
+        </div>
+      </details>
       <p className="text-xs text-muted-foreground">{t("runs.safetyNote")}</p>
       {/* What is about to judge this run, said BEFORE the first step. The server has always sent
           this frame; the client dropped it, so the sentence that mattered most — "nothing executable

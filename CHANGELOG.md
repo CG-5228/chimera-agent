@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **The Task tab says what each way of running is for, and puts Run first.** The four modes were four small chips with
+  one sentence shown for whichever was selected; each is now a card carrying its own sentence. Run and "See the plan
+  first" come straight after the task, Run the only filled button, and what tunes the run (who writes the patch,
+  attempts, the three seams, the pause on untrusted content) is folded under "Options", whose summary line says what
+  is currently set. Nothing was removed.
 - **The catalogue knows the price `glm-5.3-flash` moved to.** The live check on main (`test_catalog_is_live`) went red
   on 2026-10-12: the index quotes 0.0232 in / 1.20 out against the row's 0.045 / 0.60. The row now carries the higher
   output figure, so a fallback never reads low, and both the old and the new readings join `also_seen`.

@@ -1219,6 +1219,9 @@ const en: Dict = {
   "runs.verifyPlaceholder":
     "verify command — a shell command, exit 0 = pass (optional)",
   "runs.maxAttempts": "Max attempts",
+  "runs.options": "Options",
+  "runs.options.summary": "up to {n} attempts · {profile}",
+  "runs.options.pauses": "pauses on untrusted content",
   "runs.run": "Run",
   "runs.plan.show": "See the plan first",
   "runs.plan.working": "Planning…",
@@ -3546,6 +3549,9 @@ const pt: Dict = {
   "runs.verifyPlaceholder":
     "comando de verificação — um comando de shell, saída 0 = passou (opcional)",
   "runs.maxAttempts": "Máx. tentativas",
+  "runs.options": "Opções",
+  "runs.options.summary": "até {n} tentativas · {profile}",
+  "runs.options.pauses": "pausa com conteúdo não confiável",
   "runs.run": "Executar",
   "runs.plan.show": "Ver o plano antes",
   "runs.plan.working": "Planejando…",
@@ -5885,6 +5891,9 @@ const es: Dict = {
   "runs.verifyPlaceholder":
     "comando de verificación — un comando de shell, salida 0 = aprobado (opcional)",
   "runs.maxAttempts": "Máx. intentos",
+  "runs.options": "Opciones",
+  "runs.options.summary": "hasta {n} intentos · {profile}",
+  "runs.options.pauses": "pausa con contenido no confiable",
   "runs.run": "Ejecutar",
   "runs.plan.show": "Ver el plan primero",
   "runs.plan.working": "Planificando…",
@@ -8235,6 +8244,9 @@ const fr: Dict = {
   "runs.verifyPlaceholder":
     "commande de vérification — une commande shell, code 0 = réussi (optionnel)",
   "runs.maxAttempts": "Tentatives max",
+  "runs.options": "Options",
+  "runs.options.summary": "jusqu'à {n} tentatives · {profile}",
+  "runs.options.pauses": "pause sur contenu non fiable",
   "runs.run": "Lancer",
   "runs.plan.show": "Voir le plan d'abord",
   "runs.plan.working": "Planification…",
@@ -10591,6 +10603,9 @@ const de: Dict = {
   "runs.verifyPlaceholder":
     "Verifikationsbefehl — ein Shell-Befehl, Exit 0 = bestanden (optional)",
   "runs.maxAttempts": "Max. Versuche",
+  "runs.options": "Optionen",
+  "runs.options.summary": "bis zu {n} Versuche · {profile}",
+  "runs.options.pauses": "pausiert bei nicht vertrauenswürdigem Inhalt",
   "runs.run": "Ausführen",
   "runs.plan.show": "Erst den Plan ansehen",
   "runs.plan.working": "Plane…",
@@ -12904,6 +12919,9 @@ const zh: Dict = {
   "runs.verifyPlaceholder":
     "验证命令 —— 一条 shell 命令，退出码 0 = 通过（可选）",
   "runs.maxAttempts": "最大尝试次数",
+  "runs.options": "选项",
+  "runs.options.summary": "最多 {n} 次尝试 · {profile}",
+  "runs.options.pauses": "遇到不可信内容时暂停",
   "runs.run": "运行",
   "runs.plan.show": "先看计划",
   "runs.plan.working": "正在规划…",
@@ -15204,6 +15222,9 @@ const ja: Dict = {
   "runs.verifyPlaceholder":
     "検証コマンド — シェルコマンド、終了コード 0 = 合格（任意）",
   "runs.maxAttempts": "最大試行回数",
+  "runs.options": "オプション",
+  "runs.options.summary": "最大 {n} 回の試行 · {profile}",
+  "runs.options.pauses": "信頼できない内容で一時停止",
   "runs.run": "実行",
   "runs.plan.show": "先に計画を見る",
   "runs.plan.working": "計画中…",
@@ -17546,6 +17567,9 @@ const it: Dict = {
   "runs.verifyPlaceholder":
     "comando di verifica — un comando di shell, uscita 0 = passato (facoltativo)",
   "runs.maxAttempts": "Tentativi max",
+  "runs.options": "Opzioni",
+  "runs.options.summary": "fino a {n} tentativi · {profile}",
+  "runs.options.pauses": "pausa con contenuto non attendibile",
   "runs.run": "Esegui",
   "runs.plan.show": "Vedi prima il piano",
   "runs.plan.working": "Pianificazione…",
@@ -19889,6 +19913,9 @@ const pl: Dict = {
   "runs.verifyPlaceholder":
     "polecenie weryfikacji — polecenie powłoki, wyjście 0 = zaliczone (opcjonalne)",
   "runs.maxAttempts": "Maks. prób",
+  "runs.options": "Opcje",
+  "runs.options.summary": "do {n} prób · {profile}",
+  "runs.options.pauses": "wstrzymuje przy niezaufanej treści",
   "runs.run": "Uruchom",
   "runs.plan.show": "Najpierw zobacz plan",
   "runs.plan.working": "Planowanie…",
@@ -22234,6 +22261,9 @@ const ru: Dict = {
   "runs.verifyPlaceholder":
     "команда проверки — команда оболочки, код выхода 0 = успех (необязательно)",
   "runs.maxAttempts": "Максимум попыток",
+  "runs.options": "Параметры",
+  "runs.options.summary": "до {n} попыток · {profile}",
+  "runs.options.pauses": "пауза при недоверенном содержимом",
   "runs.run": "Запустить",
   "runs.plan.show": "Сначала посмотреть план",
   "runs.plan.working": "Планирую…",
