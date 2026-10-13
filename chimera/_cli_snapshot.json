@@ -3887,6 +3887,26 @@
               "type": "str"
             },
             {
+              "help": "Per-call timeout in seconds for this server (default 120).",
+              "kind": "option",
+              "name": "call_timeout",
+              "opts": [
+                "--call-timeout"
+              ],
+              "required": false,
+              "type": "float"
+            },
+            {
+              "help": "Connect timeout in seconds for this server (default 30).",
+              "kind": "option",
+              "name": "connect_timeout",
+              "opts": [
+                "--connect-timeout"
+              ],
+              "required": false,
+              "type": "float"
+            },
+            {
               "help": "Environment variable containing a bearer token.",
               "kind": "option",
               "name": "token_env",

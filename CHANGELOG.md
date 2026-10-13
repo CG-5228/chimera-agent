@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **MCP servers can set per-server call and connection timeouts.** Configure `call_timeout` and `connect_timeout` for
   a server instead of relying on shared limits. Slow servers, such as one running a long headless analysis, could
   exceed the fixed 120-second call timeout; per-server limits let that work take longer when needed.
+- **`chimera mcp add` accepts per-server timeout flags.** Set `--call-timeout` and `--connect-timeout` when adding a server,
+  without editing `mcp.json` by hand.
 
 ### Fixed
 
