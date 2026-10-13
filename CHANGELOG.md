@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **MCP servers can set per-server call and connection timeouts.** Configure `call_timeout` and `connect_timeout` for
+  a server instead of relying on shared limits. Slow servers, such as one running a long headless analysis, could
+  exceed the fixed 120-second call timeout; per-server limits let that work take longer when needed.
+
 ### Fixed
 
 - **The catalogue knows the price `glm-5.3-flash` moved to.** The live check on main (`test_catalog_is_live`) went red
