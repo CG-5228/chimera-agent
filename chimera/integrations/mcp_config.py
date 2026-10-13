@@ -38,6 +38,8 @@ class McpServerConfig(BaseModel):
     command: str = ""
     args: list[str] = Field(default_factory=list)
     env: dict[str, str] = Field(default_factory=dict)
+    call_timeout: float | None = None
+    connect_timeout: float | None = None
     url: str | None = None
     token_env: str | None = None
     oauth_authorization_url: str | None = None
@@ -56,7 +58,15 @@ class McpServerConfig(BaseModel):
         """Keep historical stdio JSON byte-compatible; write only configured HTTP options."""
         result = super().model_dump(**kwargs)
         if self.url is None:
-            return {key: result[key] for key in ("name", "command", "args", "env")}
+            stdio = {key: result[key] for key in ("name", "command", "args", "env")}
+            stdio.update(
+                {
+                    key: result[key]
+                    for key in ("call_timeout", "connect_timeout")
+                    if result.get(key) is not None
+                }
+            )
+            return stdio
         return {key: value for key, value in result.items() if value is not None}
 
 
@@ -274,12 +284,25 @@ def _session_for(cfg: McpServerConfig, connect_timeout: float, *, interactive: b
 
     ``interactive`` reaches only the HTTP transport: whether an OAuth sign-in may open a browser.
     """
+    configured_connect_timeout = (
+        cfg.connect_timeout if cfg.connect_timeout is not None else connect_timeout
+    )
+    configured_call_timeout = cfg.call_timeout if cfg.call_timeout is not None else 120.0
     if cfg.url:
         from chimera.integrations import StreamableHTTPMCPSession
 
         return StreamableHTTPMCPSession.from_config(
-            cfg, connect_timeout=connect_timeout, interactive=interactive
+            cfg,
+            connect_timeout=configured_connect_timeout,
+            call_timeout=configured_call_timeout,
+            interactive=interactive,
         )
     from chimera.integrations import StdioMCPSession
 
-    return StdioMCPSession(cfg.command, cfg.args or None, cfg.env or None, connect_timeout=connect_timeout)
+    return StdioMCPSession(
+        cfg.command,
+        cfg.args or None,
+        cfg.env or None,
+        connect_timeout=configured_connect_timeout,
+        call_timeout=configured_call_timeout,
+    )
