@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Unattended surfaces deny rea's target-changing tools.** Messaging, cron, A2A, MCP and GitHub-issue jobs
+  remove rea tools that execute code or mutate a target, matched from the configured MCP server name or
+  command. They cannot ask a person to approve those actions, so they must not run them unattended.
+
 ### Fixed
 
 - **The catalogue knows the price `glm-5.3-flash` moved to.** The live check on main (`test_catalog_is_live`) went red
