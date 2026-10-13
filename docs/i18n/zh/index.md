@@ -1,5 +1,5 @@
 ---
-source_sha256: 16ac522d3f1fdc1a508d268b9f88b22f75c896bd1ae6dd87839afd256e4d745f
+source_sha256: 23e0d6a10281f597d143955a12e2d2347ddd9f0ce548de655e610402d6ce63de
 ---
 
 # Chimera
@@ -18,6 +18,10 @@ source_sha256: 16ac522d3f1fdc1a508d268b9f88b22f75c896bd1ae6dd87839afd256e4d745f
 - **:material-toolbox: 做点真事**
   可直接运行的配方：邮件分诊、每日研究简报、仓库看门狗。
   [配方 →](recipes.md)
+
+- **:material-magnify: 逆向工程**
+  连接 rea MCP 服务器，以检查二进制文件、进程和应用程序。
+  [rea MCP 服务器 →](../../rea.md)
 
 - **:material-power-plug: 连接工具**
   接入任意 MCP 服务器（GitHub、文件系统……）。

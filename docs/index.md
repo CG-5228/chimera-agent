@@ -16,6 +16,10 @@ This site is task-oriented: pick what you want to do.
   Runnable recipes: email triage, a daily research brief, a repo watchdog.
   [Recipes →](recipes.md)
 
+- **:material-magnify: Reverse engineering**
+  Connect the rea MCP server for binary, process and application inspection.
+  [rea MCP server →](rea.md)
+
 - **:material-power-plug: Connect tools**
   Plug in any MCP server (GitHub, filesystem, …).
   [MCP servers →](mcp.md)

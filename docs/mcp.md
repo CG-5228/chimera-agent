@@ -102,9 +102,10 @@ MCP tools are ordinary `Tool` objects, so everything composes:
   server whose words the model reads.
 - **Manifest pinning** — the first time a server is mounted, its tool names, descriptions and input
   schemas are remembered in `mcp_pins.json` beside `mcp.json`. If a later mount lists anything
-  different, the server is **held**: the app, `chimera serve` and its bots (everything that mounts
-  through the shared MCP pool) leave it unmounted until you approve the change, with the old and new
-  text shown, through `chimera mcp approve NAME` or the MCP screen. `chimera mcp list` names held
+  different, the server is **held**: the shared MCP pool leaves it unmounted for callers that use
+  that pool until you approve the change, with the old and new text shown, through `chimera mcp
+  approve NAME` or the MCP screen. The pool's manifest gate is implemented in
+  `chimera/integrations/mcp_pool.py`. `chimera mcp list` names held
   servers. The mounted tools are the listing that was checked, so a server cannot answer the check
   with one text and the model with another. Adding or removing the server through `chimera mcp
   add/remove` or the app forgets its pin (the next mount is first sight again). Pinning is trust on

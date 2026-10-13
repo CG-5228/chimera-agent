@@ -1,5 +1,5 @@
 ---
-source_sha256: 40077b594c1ec7a80eb5e6b35149255085c30cea4844b4598de1932f2f5de836
+source_sha256: 904ec28de0e05e49e6954948454098b0c8124a2ed41002be8b9a0cf62dd5c4f3
 ---
 
 # Conectando servidores MCP
@@ -111,10 +111,11 @@ As tools MCP são objetos `Tool` comuns, então tudo compõe:
   sem cerca; um servidor que você conecta é um servidor cujas palavras o modelo lê.
 - **Fixação do manifesto** — na primeira vez que um servidor é montado, os nomes, as descrições e os
   input schemas das suas ferramentas ficam guardados em `mcp_pins.json`, ao lado de `mcp.json`. Se
-  uma montagem posterior listar qualquer coisa diferente, o servidor fica **retido**: o app, o
-  `chimera serve` e os seus bots (tudo o que monta pelo pool MCP compartilhado) não o montam até
-  você aprovar a mudança, com o texto antigo e o novo à vista, por `chimera mcp approve NOME` ou pela
-  tela MCP. `chimera mcp list` aponta os servidores retidos. As ferramentas montadas são a listagem
+  uma montagem posterior listar qualquer coisa diferente, o servidor fica **retido**: o pool MCP
+  compartilhado não o monta para quem usa esse pool até você aprovar a mudança, com o texto antigo e
+  o novo à vista, por `chimera mcp approve NOME` ou pela tela MCP. O gate de manifesto do pool está
+  implementado em `chimera/integrations/mcp_pool.py`. `chimera mcp list` aponta os servidores
+  retidos. As ferramentas montadas são a listagem
   que foi conferida, então um servidor não consegue responder à conferência com um texto e ao
   modelo com outro. Adicionar ou remover o servidor por `chimera mcp add/remove` ou pelo app esquece
   a fixação (a próxima montagem volta a ser o primeiro contato). A fixação é confiança no primeiro

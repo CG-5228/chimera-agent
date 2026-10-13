@@ -1,5 +1,5 @@
 ---
-source_sha256: 40077b594c1ec7a80eb5e6b35149255085c30cea4844b4598de1932f2f5de836
+source_sha256: 904ec28de0e05e49e6954948454098b0c8124a2ed41002be8b9a0cf62dd5c4f3
 ---
 
 # Connecter des serveurs MCP
@@ -115,10 +115,11 @@ Les outils MCP sont des objets `Tool` ordinaires, donc tout se compose :
   écrits, sans clôture ; un serveur que vous connectez est un serveur dont le modèle lit les mots.
 - **Épinglage du manifeste** — la première fois qu'un serveur est monté, les noms, descriptions et
   input schemas de ses outils sont mémorisés dans `mcp_pins.json`, à côté de `mcp.json`. Si un
-  montage ultérieur liste quoi que ce soit de différent, le serveur est **retenu** : l'app,
-  `chimera serve` et ses bots (tout ce qui monte via le pool MCP partagé) ne le montent pas tant que
-  vous n'avez pas approuvé le changement, avec l'ancien et le nouveau texte affichés, via `chimera
-  mcp approve NOM` ou l'écran MCP. `chimera mcp list` signale les serveurs retenus. Les outils montés
+  montage ultérieur liste quoi que ce soit de différent, le serveur est **retenu** : le pool MCP
+  partagé ne le monte pas pour les appelants qui utilisent ce pool tant que vous n'avez pas approuvé
+  le changement, avec l'ancien et le nouveau texte affichés, via `chimera mcp approve NOM` ou
+  l'écran MCP. Le contrôle du manifeste du pool est implémenté dans
+  `chimera/integrations/mcp_pool.py`. `chimera mcp list` signale les serveurs retenus. Les outils montés
   sont la liste qui a été vérifiée : un serveur ne peut donc pas répondre à la vérification avec un
   texte et au modèle avec un autre. Ajouter ou retirer le serveur via `chimera mcp add/remove` ou
   l'app oublie son épinglage (le montage suivant redevient un premier contact). L'épinglage est une

@@ -1,5 +1,5 @@
 ---
-source_sha256: 40077b594c1ec7a80eb5e6b35149255085c30cea4844b4598de1932f2f5de836
+source_sha256: 904ec28de0e05e49e6954948454098b0c8124a2ed41002be8b9a0cf62dd5c4f3
 ---
 
 # Connettere server MCP
@@ -113,10 +113,11 @@ I tool MCP sono ordinari oggetti `Tool`, quindi tutto si compone:
   scritti, senza recinto; un server che colleghi è un server di cui il modello legge le parole.
 - **Fissaggio del manifest** — la prima volta che un server viene montato, nomi, descrizioni e
   input schema dei suoi strumenti vengono memorizzati in `mcp_pins.json`, accanto a `mcp.json`. Se
-  un montaggio successivo elenca qualcosa di diverso, il server viene **trattenuto**: l'app,
-  `chimera serve` e i suoi bot (tutto ciò che monta tramite il pool MCP condiviso) non lo montano
-  finché non approvi la modifica, con il testo vecchio e quello nuovo in vista, tramite `chimera mcp
-  approve NOME` o la schermata MCP. `chimera mcp list` indica i server trattenuti. Gli strumenti
+  un montaggio successivo elenca qualcosa di diverso, il server viene **trattenuto**: il pool MCP
+  condiviso non lo monta per i chiamanti che usano quel pool finché non approvi la modifica, con il
+  testo vecchio e quello nuovo in vista, tramite `chimera mcp approve NOME` o la schermata MCP.
+  Il controllo del manifest del pool è implementato in `chimera/integrations/mcp_pool.py`.
+  `chimera mcp list` indica i server trattenuti. Gli strumenti
   montati sono l'elenco che è stato controllato, quindi un server non può rispondere al controllo
   con un testo e al modello con un altro. Aggiungere o rimuovere il server con `chimera mcp
   add/remove` o dall'app ne dimentica il fissaggio (il montaggio successivo torna a essere il primo
