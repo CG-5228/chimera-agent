@@ -1,5 +1,5 @@
 ---
-source_sha256: 40077b594c1ec7a80eb5e6b35149255085c30cea4844b4598de1932f2f5de836
+source_sha256: 904ec28de0e05e49e6954948454098b0c8124a2ed41002be8b9a0cf62dd5c4f3
 ---
 
 # Podłączanie serwerów MCP
@@ -112,10 +112,11 @@ Narzędzia MCP są zwykłymi obiektami `Tool`, więc wszystko się komponuje:
   ogrodzenia; serwer, który podłączasz, to serwer, którego słowa czyta model.
 - **Przypinanie manifestu** — przy pierwszym zamontowaniu serwera nazwy, opisy i input schema
   jego narzędzi są zapamiętywane w `mcp_pins.json` obok `mcp.json`. Jeśli późniejsze zamontowanie
-  wypisze cokolwiek innego, serwer zostaje **wstrzymany**: aplikacja, `chimera serve` i jego boty
-  (wszystko, co montuje przez wspólną pulę MCP) nie montują go, dopóki nie zatwierdzisz zmiany, ze
-  starym i nowym tekstem obok siebie, przez `chimera mcp approve NAZWA` lub ekran MCP. `chimera mcp
-  list` wskazuje wstrzymane serwery. Zamontowane narzędzia to lista, która została sprawdzona, więc
+  wypisze cokolwiek innego, serwer zostaje **wstrzymany**: wspólna pula MCP nie montuje go dla
+  wywołujących, którzy korzystają z tej puli, dopóki nie zatwierdzisz zmiany, ze starym i nowym
+  tekstem obok siebie, przez `chimera mcp approve NAZWA` lub ekran MCP. Bramka manifestu puli jest
+  zaimplementowana w `chimera/integrations/mcp_pool.py`. `chimera mcp list` wskazuje wstrzymane
+  serwery. Zamontowane narzędzia to lista, która została sprawdzona, więc
   serwer nie może odpowiedzieć sprawdzeniu jednym tekstem, a modelowi innym. Dodanie lub usunięcie
   serwera przez `chimera mcp add/remove` albo w aplikacji zapomina jego przypięcie (następne
   zamontowanie znów jest pierwszym kontaktem). Przypinanie to zaufanie przy pierwszym użyciu: łapie

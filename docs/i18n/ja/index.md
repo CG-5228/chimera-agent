@@ -1,5 +1,5 @@
 ---
-source_sha256: 16ac522d3f1fdc1a508d268b9f88b22f75c896bd1ae6dd87839afd256e4d745f
+source_sha256: 23e0d6a10281f597d143955a12e2d2347ddd9f0ce548de655e610402d6ce63de
 ---
 
 # Chimera
@@ -17,6 +17,10 @@ source_sha256: 16ac522d3f1fdc1a508d268b9f88b22f75c896bd1ae6dd87839afd256e4d745f
 - **:material-toolbox: 実際に何かをする**
   実行可能なレシピ: メールトリアージ、日次リサーチブリーフ、リポジトリのウォッチドッグ。
   [レシピ →](recipes.md)
+
+- **:material-magnify: リバースエンジニアリング**
+  バイナリ、プロセス、アプリケーションを調査するためにrea MCPサーバーを接続する。
+  [rea MCPサーバー →](../../rea.md)
 
 - **:material-power-plug: ツールを接続する**
   任意のMCPサーバー(GitHub、ファイルシステムなど)を接続する。

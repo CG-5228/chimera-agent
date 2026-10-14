@@ -1,5 +1,5 @@
 ---
-source_sha256: 40077b594c1ec7a80eb5e6b35149255085c30cea4844b4598de1932f2f5de836
+source_sha256: 904ec28de0e05e49e6954948454098b0c8124a2ed41002be8b9a0cf62dd5c4f3
 ---
 
 # Conectando servidores MCP
@@ -114,10 +114,11 @@ Las herramientas MCP son objetos `Tool` ordinarios, así que todo se compone:
   modelo.
 - **Fijación del manifiesto** — la primera vez que se monta un servidor, los nombres, las
   descripciones y los input schemas de sus herramientas se guardan en `mcp_pins.json`, junto a
-  `mcp.json`. Si un montaje posterior lista algo distinto, el servidor queda **retenido**: la app,
-  `chimera serve` y sus bots (todo lo que monta a través del pool MCP compartido) no lo montan hasta
-  que apruebes el cambio, con el texto antiguo y el nuevo a la vista, mediante `chimera mcp approve
-  NOMBRE` o la pantalla MCP. `chimera mcp list` señala los servidores retenidos. Las herramientas
+  `mcp.json`. Si un montaje posterior lista algo distinto, el servidor queda **retenido**: el pool
+  MCP compartido no lo monta para quienes usan ese pool hasta que apruebes el cambio, con el texto
+  antiguo y el nuevo a la vista, mediante `chimera mcp approve NOMBRE` o la pantalla MCP. La
+  barrera del manifiesto del pool está implementada en `chimera/integrations/mcp_pool.py`.
+  `chimera mcp list` señala los servidores retenidos. Las herramientas
   montadas son el listado que se comprobó, así que un servidor no puede responder a la comprobación
   con un texto y al modelo con otro. Añadir o quitar el servidor con `chimera mcp add/remove` o desde
   la app olvida su fijación (el siguiente montaje vuelve a ser el primer contacto). La fijación es

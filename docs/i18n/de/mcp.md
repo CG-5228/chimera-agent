@@ -1,5 +1,5 @@
 ---
-source_sha256: 40077b594c1ec7a80eb5e6b35149255085c30cea4844b4598de1932f2f5de836
+source_sha256: 904ec28de0e05e49e6954948454098b0c8124a2ed41002be8b9a0cf62dd5c4f3
 ---
 
 # MCP-Server verbinden
@@ -113,10 +113,11 @@ MCP-Tools sind gewöhnliche `Tool`-Objekte, sodass sich alles zusammensetzt:
   ein Server, den du anbindest, ist ein Server, dessen Worte das Modell liest.
 - **Manifest-Pinning** — beim ersten Einbinden eines Servers werden Namen, Beschreibungen und
   Input-Schemas seiner Tools in `mcp_pins.json` neben `mcp.json` gespeichert. Listet ein späteres
-  Einbinden irgendetwas anders, wird der Server **zurückgehalten**: Die App, `chimera serve` und
-  seine Bots (alles, was über den gemeinsamen MCP-Pool einbindet) binden ihn nicht ein, bis Sie die
-  Änderung freigeben, mit altem und neuem Text nebeneinander, über `chimera mcp approve NAME` oder
-  den MCP-Bildschirm. `chimera mcp list` nennt zurückgehaltene Server. Die eingebundenen Tools sind
+  Einbinden irgendetwas anders, wird der Server **zurückgehalten**: Der gemeinsame MCP-Pool bindet
+  ihn für Aufrufer, die diesen Pool nutzen, nicht ein, bis Sie die Änderung freigeben, mit altem
+  und neuem Text nebeneinander, über `chimera mcp approve NAME` oder den MCP-Bildschirm. Das
+  Manifest-Gate des Pools ist in `chimera/integrations/mcp_pool.py` implementiert. `chimera mcp
+  list` nennt zurückgehaltene Server. Die eingebundenen Tools sind
   genau die geprüfte Liste, sodass ein Server der Prüfung nicht einen Text und dem Modell einen
   anderen liefern kann. Hinzufügen oder Entfernen des Servers über `chimera mcp add/remove` oder die
   App vergisst seinen Pin (das nächste Einbinden ist wieder der Erstkontakt). Pinning ist Vertrauen
