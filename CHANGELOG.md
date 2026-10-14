@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.67.0] - 2026-10-13
 ### Added
 
 - **Document the rea MCP server.** Add its catalogue setup, unattended tool restrictions, prerequisites and timeout configuration to `docs/rea.md`.
