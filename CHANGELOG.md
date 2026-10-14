@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **MCP tool responses can be capped per server.** Set `max_output_chars` or use `--max-output-chars` with
   `chimera mcp add` to keep a large response from overwhelming the prompt; truncated output reports its original size.
 
+- **Document running rea in Chimera Desktop on Windows.** Record the measured Ghidra, Java,
+  environment, timeout, deferred-tool and response-size setup.
+
 ## [0.67.0] - 2026-10-13
 ### Added
 
