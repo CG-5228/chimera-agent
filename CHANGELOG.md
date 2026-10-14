@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Added
+
+- **MCP tool responses can be capped per server.** Set `max_output_chars` or use `--max-output-chars` with
+  `chimera mcp add` to keep a large response from overwhelming the prompt; truncated output reports its original size.
 
 ## [0.67.0] - 2026-10-13
 ### Added
