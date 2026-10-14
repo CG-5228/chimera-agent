@@ -183,7 +183,23 @@ def test_two_conversations_in_one_folder_take_turns_and_the_second_is_told_why(
     assert editor.held.wait(TIMEOUT)
     second = threading.Thread(target=lambda: replies.setdefault("second", _turn(client, folder, "read")), daemon=True)
     second.start()
-    time.sleep(0.4)
+
+    # Wait for the notice on the second turn's stream: only emitted after it fails to acquire the
+    # folder lock, unlike a fixed delay that can expire before the request reaches that lock.
+    bus = client.app.state.session_bus
+    deadline = time.monotonic() + TIMEOUT
+    waiting_notice = False
+    while time.monotonic() < deadline and not waiting_notice:
+        running = client.get("/api/code/turns/running").json()
+        second_turn = next((turn for turn in running if "read" in turn["message"]), None)
+        if second_turn is not None:
+            waiting_notice = any(
+                frame["event"] == "notice" and frame["payload"].get("code") == "folder_busy"
+                for frame in bus.replay(second_turn["session_id"])
+            )
+        if not waiting_notice:
+            time.sleep(0.02)
+    assert waiting_notice, "the second turn did not report waiting for the folder within TIMEOUT"
 
     assert [t.split(" [")[0] for t in editor.entered] == ["hold"], "the second turn ran inside the first one's folder"
     editor.hold.set()
