@@ -391,3 +391,24 @@ def redact(text: str) -> str:
     for pattern in _PATTERNS:
         text = pattern.sub(MASK, text)
     return text
+
+
+def redact_json(value: object) -> object:
+    """Redact strings in a JSON-compatible structure before it is serialized.
+
+    Applying :func:`redact` to serialized JSON can let a quoted credential-header pattern consume
+    JSON escape characters and leave the document invalid. Redacting each string first keeps the
+    serializer responsible for all escaping and preserves non-string values unchanged.
+    """
+    if isinstance(value, str):
+        return redact(value)
+    if isinstance(value, dict):
+        return {
+            redact(key) if isinstance(key, str) else key: redact_json(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [redact_json(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(redact_json(item) for item in value)
+    return value
