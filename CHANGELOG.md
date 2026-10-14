@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **Code sessions and step logs remain valid JSON when redacting credential headers.** Redact string values before serialization so escaped quotes in a message cannot be consumed by a header pattern and make the saved conversation unreadable.
 
+- **The desktop shell takes `rustls` 0.23.46.** RustSec published four advisories against 0.23.45 on 2026-10-14
+  (RUSTSEC-2026-0346 to 0349), and `cargo audit` turned the supply-chain job on main red. 0.23.46 declares the
+  same dependencies and features, so only the version and checksum in `Cargo.lock` change.
+
 ## [0.67.0] - 2026-10-13
 ### Added
 
