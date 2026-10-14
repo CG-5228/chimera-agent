@@ -25,7 +25,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from chimera.core.redact import redact
+from chimera.core.redact import redact_json
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from chimera.core.context_drift import DriftReport
@@ -379,7 +379,9 @@ class StepLog:
             "stopped_reason": stopped_reason,
             **self.as_dict(),
         }
-        line = redact(json.dumps(record, ensure_ascii=False))
+        # Redact string values before serialization: running header patterns over JSON text can eat
+        # escaped quotes/newlines and make this JSONL record invalid. The serializer must own escapes.
+        line = json.dumps(redact_json(record), ensure_ascii=False)
         path.parent.mkdir(parents=True, exist_ok=True)
         _rotate_if_large(path)
         with path.open("a", encoding="utf-8") as fh:

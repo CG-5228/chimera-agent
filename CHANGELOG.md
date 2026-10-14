@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **Document running rea in Chimera Desktop on Windows.** Record the measured Ghidra, Java,
   environment, timeout, deferred-tool and response-size setup.
 
+### Fixed
+
+- **Code sessions and step logs remain valid JSON when redacting credential headers.** Redact string values before serialization so escaped quotes in a message cannot be consumed by a header pattern and make the saved conversation unreadable.
+
 ## [0.67.0] - 2026-10-13
 ### Added
 
