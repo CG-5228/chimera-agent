@@ -503,9 +503,13 @@ async def test_the_modal_defaults_to_no_in_every_way_it_can_be_dismissed() -> No
     assert answers == [NO]
 
 
-async def test_the_countdown_says_a_refusal_is_coming_before_it_arrives() -> None:
+async def test_the_countdown_says_a_refusal_is_coming_before_it_arrives(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """A timeout reported afterwards and a timeout visible while it runs are different things, and
     the difference is the entire complaint about the 123.8 s block."""
+    # Keep the initial paint at 45s regardless of how long the test runner takes to draw it.
+    monkeypatch.setattr(ConfirmScreen, "_tick", lambda _self: None)
     seen: list[str] = []
 
     class Screens(App[None]):
