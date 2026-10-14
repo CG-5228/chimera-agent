@@ -237,6 +237,18 @@ def _serialised_in(structured: Any, texts: list[str]) -> bool:
     return False
 
 
+def _cap_output(text: str, max_output_chars: int | None) -> str:
+    """Bound the text a server can hand to the model, while making the loss explicit."""
+    if max_output_chars is None or len(text) <= max_output_chars:
+        return text
+    prefix = "error: " if text.startswith("error: ") else ""
+    retained = max(0, max_output_chars - len(prefix))
+    return prefix + text[len(prefix):len(prefix) + retained] + (
+        f"\n... [truncated, {len(text)} chars total; limit {max_output_chars} chars]"
+    )
+
+
+
 def _content_to_text(result: Any) -> str:
     """Flatten an MCP CallToolResult into the text the model reads.
 
@@ -270,11 +282,13 @@ class StreamableHTTPMCPSession:
         headers: dict[str, str] | None = None,
         connect_timeout: float = 30.0,
         call_timeout: float = 120.0,
+        max_output_chars: int | None = None,
     ) -> None:
         self.url = url
         self.headers = headers or {}
         self.connect_timeout = connect_timeout
         self.call_timeout = call_timeout
+        self.max_output_chars = max_output_chars
         self._loop: Any = None
         self._thread: Any = None
         self._session: Any = None
@@ -292,6 +306,7 @@ class StreamableHTTPMCPSession:
         *,
         connect_timeout: float = 30.0,
         call_timeout: float = 120.0,
+        max_output_chars: int | None = None,
         interactive: bool = False,
     ) -> StreamableHTTPMCPSession:
         """Resolve a configured environment token or a stored OAuth token.
@@ -327,6 +342,9 @@ class StreamableHTTPMCPSession:
             headers=headers,
             connect_timeout=connect_timeout,
             call_timeout=call_timeout,
+            max_output_chars=(
+                max_output_chars if max_output_chars is not None else cfg.max_output_chars
+            ),
         )
 
     def start(self) -> StreamableHTTPMCPSession:
@@ -401,7 +419,9 @@ class StreamableHTTPMCPSession:
         except Exception as exc:  # noqa: BLE001 — SDK errors can contain request headers
             raise RuntimeError(f"MCP HTTP tool call failed ({type(exc).__name__})") from None
         text = _content_to_text(result)
-        return f"error: {text or 'MCP tool reported a failure'}" if getattr(result, "isError", False) else text
+        if getattr(result, "isError", False):
+            text = f"error: {text or 'MCP tool reported a failure'}"
+        return _cap_output(text, self.max_output_chars)
 
     def close(self) -> None:
         if self._loop is None:
@@ -531,12 +551,14 @@ class StdioMCPSession:
         *,
         connect_timeout: float = 30.0,
         call_timeout: float = 120.0,
+        max_output_chars: int | None = None,
     ) -> None:
         self.command = command
         self.args = args or []
         self.env = env
         self.connect_timeout = connect_timeout
         self.call_timeout = call_timeout
+        self.max_output_chars = max_output_chars
         self._loop: Any = None
         self._thread: Any = None
         self._session: Any = None
@@ -657,8 +679,8 @@ class StdioMCPSession:
         # (not a protocol error). Surface it as an `error:` observation so the agent can tell a real
         # answer from a failure — otherwise "database connection refused" reads as a valid result.
         if getattr(result, "isError", False):
-            return f"error: {text or 'MCP tool reported a failure'}"
-        return text
+            text = f"error: {text or 'MCP tool reported a failure'}"
+        return _cap_output(text, self.max_output_chars)
 
     def close(self) -> None:
         # Signal _serve to exit; its AsyncExitStack then unwinds in its own task.

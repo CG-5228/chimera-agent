@@ -51,6 +51,9 @@ def mcp_add(
     connect_timeout: float | None = typer.Option(
         None, "--connect-timeout", help="Connect timeout in seconds for this server (default 30)."
     ),
+    max_output_chars: int | None = typer.Option(
+        None, "--max-output-chars", help="Maximum response characters per tool call for this server."
+    ),
     token_env: str | None = typer.Option(None, "--token-env", help="Environment variable containing a bearer token."),
     oauth_authorization_url: str | None = typer.Option(None, "--oauth-authorization-url", help="OAuth authorization endpoint."),
     oauth_token_url: str | None = typer.Option(None, "--oauth-token-url", help="OAuth token endpoint."),
@@ -76,12 +79,16 @@ def mcp_add(
     if connect_timeout is not None and connect_timeout <= 0:
         console.print("[red]--connect-timeout must be greater than 0[/red]")
         raise typer.Exit(code=1)
+    if max_output_chars is not None and max_output_chars <= 0:
+        console.print("[red]--max-output-chars must be greater than 0[/red]")
+        raise typer.Exit(code=1)
     if bool(command) == bool(url):
         console.print("[red]choose exactly one of --command or --url[/red]")
         raise typer.Exit(code=1)
     cfg = McpServerConfig(
         name=name, command=command or "", args=list(arg or []), env=env_map, url=url,
         call_timeout=call_timeout, connect_timeout=connect_timeout,
+        max_output_chars=max_output_chars,
         token_env=token_env, oauth_authorization_url=oauth_authorization_url,
         oauth_token_url=oauth_token_url, oauth_client_id=oauth_client_id,
         oauth_redirect_uri=oauth_redirect_uri, oauth_scope=oauth_scope,
