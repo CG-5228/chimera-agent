@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **The catalogue knows the price `llama-3.3-70b-instruct` moved to.** The live check on main went red on
+  2026-10-13: the index quotes 0.59 in / 0.79 out against the row's 0.22 / 0.50. The row now carries the live
+  figures, and the previous reading joins `also_seen`.
+
 - **The Task tab says what each way of running is for, and puts Run first.** The four modes were four small chips with
   one sentence shown for whichever was selected; each is now a card carrying its own sentence. Run and "See the plan
   first" come straight after the task, Run the only filled button, and what tunes the run (who writes the patch,
