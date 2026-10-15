@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Added
+
+- **Bot MCP access is an explicit server allowlist.** `CHIMERA_MCP_AUTOLOAD` no longer exposes its
+  connected servers to messaging bots by itself; `CHIMERA_BOT_MCP_SERVERS` opts named servers in, and every
+  rea tool call that runs there is reported to the owner like on any other surface.
+
 ### Changed
 
 - **rea's target-changing tools stay available, with an alert for every call.** The tools the `rea` catalogue
