@@ -8,8 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - **Bot MCP access is an explicit server allowlist.** `CHIMERA_MCP_AUTOLOAD` no longer exposes its
-  connected servers to messaging bots by itself; `CHIMERA_BOT_MCP_SERVERS` opts named servers in, with
-  rea's target-changing tools still denied on unattended bot surfaces.
+  connected servers to messaging bots by itself; `CHIMERA_BOT_MCP_SERVERS` opts named servers in, and every
+  rea tool call that runs there is reported to the owner like on any other surface.
+
+### Changed
+
+- **rea's target-changing tools stay available, with an alert for every call.** The tools the `rea` catalogue
+  entry lists in `exec_tools` are no longer removed on surfaces without an approver; each call that runs is
+  recorded in the audit log and reported to the owner through the configured approval webhook, and a call an
+  inner governance layer refuses is neither recorded nor announced.
 
 ### Fixed
 

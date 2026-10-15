@@ -59,11 +59,11 @@ Responses can be very large: one `rea_analyze_function` call returned about 430k
 
 The server connects once when the app starts. Restart the app after adding it.
 
-## Tools on unattended surfaces
+## Target-changing tools and alerts
 
-The `rea` catalogue entry marks target-changing or code-executing tools in `exec_tools`. `chimera/governance/mcp_readonly.py` uses that list to build denied tool names for configured `rea` servers. It matches a server when its configured name is `rea`, or when the command line contains the entry's `rea-agents` match string, and prefixes each denied tool name with the configured server name.
+The `rea` catalogue entry marks target-changing or code-executing tools in `exec_tools`. Those tools remain available on every surface, including messaging, cron, A2A, MCP, and GitHub-issue jobs; they are not removed simply because a surface cannot request approval. The matching uses the configured server name (`rea`) or the catalogue's `rea-agents` command match, and prefixes tool names with the configured server name.
 
-The helper classifies these surfaces as unattended: names beginning with `app-messaging` or `cron:`, and the exact names `a2a`, `mcp`, and `github-issue`. On those surfaces, the matching `rea` tools are denied by name rather than offered for approval. Other surface names are not classified as unattended by this helper.
+Each invocation of a matching tool records a `rea_tool_executed` event in `audit.jsonl`, including the tool name, surface, and UTC timestamp. Chimera also sends an owner notification through the configured approval webhook; when no webhook is configured, the durable audit event remains available in the existing audit log. This is additional to any approval governance a surface already provides.
 
 The `exec_tools` names are:
 

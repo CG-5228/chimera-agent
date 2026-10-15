@@ -1,4 +1,4 @@
-"""Tests for rea's target-changing tools and unattended-surface policy."""
+"""Tests for rea alert selection and per-invocation reporting."""
 
 from __future__ import annotations
 
@@ -8,7 +8,9 @@ from pathlib import Path
 import pytest
 
 from chimera.config import Settings
-from chimera.governance.mcp_readonly import REA_WRITE_TOOLS, is_unattended, read_only_denials
+from chimera.governance.mcp_readonly import REA_WRITE_TOOLS, alert_rea_tools, rea_alert_names
+from chimera.tools.base import Tool, refusal
+from chimera.tools.registry import ToolRegistry
 
 
 @pytest.fixture
@@ -48,46 +50,46 @@ def test_rea_write_tool_catalog_is_the_expected_set() -> None:
     ) == REA_WRITE_TOOLS
 
 
-@pytest.mark.parametrize(
-    ("surface", "expected"),
-    [
-        ("app-messaging:discord", True),
-        ("platform:discord", True),
-        ("cron:task", True),
-        ("a2a", True),
-        ("mcp", True),
-        ("github-issue", True),
-        ("chat", False),
-        ("tui", False),
-        ("assist", False),
-        ("api:run", False),
-    ],
-)
-def test_surface_attendance_classification(surface: str, expected: bool) -> None:
-    assert is_unattended(surface) is expected
-
-
-def test_read_only_denials_for_catalogue_name(settings: Settings) -> None:
+def test_alert_names_for_catalogue_name(settings: Settings) -> None:
     settings.home.mkdir(parents=True, exist_ok=True)
     (settings.home / "mcp.json").write_text(
         json.dumps([{"name": "rea", "command": "npx", "args": ["-y", "rea"]}]),
         encoding="utf-8",
     )
 
-    assert read_only_denials(settings) == sorted(f"rea_{tool}" for tool in REA_WRITE_TOOLS)
+    assert rea_alert_names(settings) == sorted(f"rea_{tool}" for tool in REA_WRITE_TOOLS)
 
 
-def test_read_only_denials_without_rea_server(settings: Settings) -> None:
+def test_alert_names_without_rea_server(settings: Settings) -> None:
     settings.home.mkdir(parents=True, exist_ok=True)
     (settings.home / "mcp.json").write_text(
         json.dumps([{"name": "other", "command": "node", "args": ["server.js"]}]),
         encoding="utf-8",
     )
 
-    assert read_only_denials(settings) == []
+    assert rea_alert_names(settings) == []
+
+def test_alert_rea_tools_without_rea_returns_same_registry(settings: Settings) -> None:
+    settings.home.mkdir(parents=True, exist_ok=True)
+    (settings.home / "mcp.json").write_text(
+        json.dumps([{"name": "other", "command": "node", "args": ["server.js"]}]),
+        encoding="utf-8",
+    )
+    registry = ToolRegistry()
+    registry.register(_FakeTool("ordinary_tool"))
+
+    assert (
+        alert_rea_tools(
+            registry,
+            settings=settings,
+            surface="test",
+            audit=_FakeAudit(),
+        )
+        is registry
+    )
 
 
-def test_read_only_denials_match_package_when_name_differs(settings: Settings) -> None:
+def test_alert_names_match_package_when_name_differs(settings: Settings) -> None:
     settings.home.mkdir(parents=True, exist_ok=True)
     (settings.home / "mcp.json").write_text(
         json.dumps(
@@ -102,20 +104,20 @@ def test_read_only_denials_match_package_when_name_differs(settings: Settings) -
         encoding="utf-8",
     )
 
-    assert read_only_denials(settings) == sorted(
+    assert rea_alert_names(settings) == sorted(
         f"reverse-engineer_{tool}" for tool in REA_WRITE_TOOLS
     )
 
 
-def test_read_only_denials_require_configured_rea_tools(settings: Settings) -> None:
+def test_alert_names_include_configured_rea_tools(settings: Settings) -> None:
     settings.home.mkdir(parents=True, exist_ok=True)
     (settings.home / "mcp.json").write_text(
         json.dumps([{"name": "rea", "command": "npx", "args": ["-y", "rea"]}]),
         encoding="utf-8",
     )
 
-    assert len(read_only_denials(settings)) == 25
-    assert all(name.startswith("rea_") for name in read_only_denials(settings))
+    assert len(rea_alert_names(settings)) == 25
+    assert all(name.startswith("rea_") for name in rea_alert_names(settings))
 
 
 def test_rea_catalog_declares_no_auth_secrets() -> None:
@@ -127,4 +129,87 @@ def test_rea_catalog_declares_no_auth_secrets() -> None:
     assert len(rea.exec_tools) == 25
     assert rea.exec_tools == tuple(sorted(REA_WRITE_TOOLS))
     assert rea.match == "rea-agents"
+
+
+class _FakeTool(Tool):
+    def __init__(self, name: str, result: str = "ran") -> None:
+        self.name = name
+        self.description = "fake"
+        self.parameters = {"type": "object", "properties": {}}
+        self.result = result
+
+    def run(self, **kwargs: object) -> str:
+        return self.result
+
+
+class _FakeAudit:
+    def __init__(self) -> None:
+        self.events: list[tuple[str, dict[str, object]]] = []
+
+    def record(self, event_type: str, payload: dict[str, object]) -> None:
+        self.events.append((event_type, payload))
+
+
+def _configure_rea(settings: Settings) -> None:
+    settings.home.mkdir(parents=True, exist_ok=True)
+    (settings.home / "mcp.json").write_text(
+        json.dumps([{"name": "rea", "command": "npx", "args": ["-y", "rea"]}]),
+        encoding="utf-8",
+    )
+
+
+def test_unattended_surface_keeps_rea_tool_available_and_reports_each_call(
+    settings: Settings,
+) -> None:
+    _configure_rea(settings)
+    name = f"rea_{sorted(REA_WRITE_TOOLS)[0]}"
+    registry = ToolRegistry()
+    registry.register(_FakeTool(name))
+    registry.register(_FakeTool("rea_read_analysis"))
+    audit = _FakeAudit()
+    alerts: list[str] = []
+
+    wrapped = alert_rea_tools(
+        registry, settings=settings, surface="cron:nightly", audit=audit, alert=alerts.append
+    )
+
+    assert name in wrapped.names()
+    assert wrapped.run(name) == "ran"
+    assert wrapped.run(name) == "ran"
+    assert len(audit.events) == 2
+    for event_type, payload in audit.events:
+        assert event_type == "rea_tool_executed"
+        assert payload["tool"] == name
+        assert payload["surface"] == "cron:nightly"
+        assert isinstance(payload["at"], str)
+    assert len(alerts) == 2
+    assert all(name in message and "cron:nightly" in message for message in alerts)
+    assert wrapped.run("rea_read_analysis") == "ran"
+    assert len(audit.events) == 2
+    assert len(alerts) == 2
+
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "[governance: BLOCKED — policy] The tool did NOT run.",
+        "[governance: needs review — approval denied] The tool did NOT run.",
+    ],
+)
+def test_refused_rea_tool_does_not_report_execution(settings: Settings, reason: str) -> None:
+    _configure_rea(settings)
+    name = f"rea_{sorted(REA_WRITE_TOOLS)[0]}"
+    registry = ToolRegistry()
+    registry.register(_FakeTool(name, result=refusal(reason)))
+    audit = _FakeAudit()
+    alerts: list[str] = []
+
+    wrapped = alert_rea_tools(
+        registry, settings=settings, surface="cron:nightly", audit=audit, alert=alerts.append
+    )
+
+    result = wrapped.run(name)
+
+    assert result == refusal(reason)
+    assert audit.events == []
+    assert alerts == []
 

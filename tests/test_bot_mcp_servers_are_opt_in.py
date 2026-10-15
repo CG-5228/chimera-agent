@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from chimera.config import Settings
+from chimera.governance.mcp_readonly import ReaAlertTool
 from chimera.governance.profile import governed_profile
 from chimera.tools.base import Tool
 from chimera.tools.registry import ToolRegistry
@@ -80,11 +81,11 @@ def test_bot_never_mounts_global_mcp_autoload_without_server_opt_in(
     assert "public_read" not in governed
 
 
-def test_bot_mounts_only_named_mcp_servers_and_the_readonly_fence_still_applies(
+def test_bot_mounts_only_named_mcp_servers_and_rea_calls_are_alerted_not_removed(
     tmp_path: Path, monkeypatch: Any
 ) -> None:
-    # This fake rea server makes the production policy read-only without starting MCP or touching
-    # the network; the ordinary selected server remains available to the bot.
+    # A fake rea server, so the alert policy applies without starting MCP or touching the network;
+    # the ordinary selected server remains available to the bot and the unselected one does not.
     (tmp_path / "mcp.json").write_text(
         '[{"name":"rea","command":"rea-agents","args":[]},'
         '{"name":"public","command":"node","args":[]}]',
@@ -108,7 +109,10 @@ def test_bot_mounts_only_named_mcp_servers_and_the_readonly_fence_still_applies(
     assert mcp.requests == 1
     assert "public_read" in governed
     assert "private_read" not in governed
-    assert "rea_instrument_with_frida" not in governed
+    # The owner decided on 2026-10-13 that rea's target-changing tools stay available on every
+    # surface and that each call is reported instead: present, and wrapped by the alert.
+    assert "rea_instrument_with_frida" in governed
+    assert isinstance(governed.get("rea_instrument_with_frida"), ReaAlertTool)
 
 
 def test_settings_reads_the_bot_server_opt_in_from_its_environment(monkeypatch: Any) -> None:
