@@ -71,11 +71,13 @@ def test_bot_never_mounts_global_mcp_autoload_without_server_opt_in(
     settings = _settings(tmp_path)
     registry = ToolRegistry()
 
-    governed_profile(registry, settings=settings, home=tmp_path, surface="app-messaging:discord")
+    governed, _ = governed_profile(
+        registry, settings=settings, home=tmp_path, surface="app-messaging:discord"
+    )
 
     assert mcp.requests == 0
-    assert "private_read" not in registry
-    assert "public_read" not in registry
+    assert "private_read" not in governed
+    assert "public_read" not in governed
 
 
 def test_bot_mounts_only_named_mcp_servers_and_the_readonly_fence_still_applies(
@@ -99,12 +101,14 @@ def test_bot_mounts_only_named_mcp_servers_and_the_readonly_fence_still_applies(
     settings = _settings(tmp_path, opt_in="rea, public")
     registry = ToolRegistry()
 
-    governed_profile(registry, settings=settings, home=tmp_path, surface="platform:discord")
+    governed, _ = governed_profile(
+        registry, settings=settings, home=tmp_path, surface="platform:discord"
+    )
 
     assert mcp.requests == 1
-    assert "public_read" in registry
-    assert "private_read" not in registry
-    assert "rea_instrument_with_frida" not in registry
+    assert "public_read" in governed
+    assert "private_read" not in governed
+    assert "rea_instrument_with_frida" not in governed
 
 
 def test_settings_reads_the_bot_server_opt_in_from_its_environment(monkeypatch: Any) -> None:

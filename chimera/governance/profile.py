@@ -534,8 +534,7 @@ def governed_profile(
         selected = {name.strip() for name in settings.bot_mcp_servers.split(",") if name.strip()}
         if selected and settings.mcp_autoload:
             try:
-                from chimera.integrations import ConnectorRegistry
-                from chimera.integrations import mcp_pool
+                from chimera.integrations import ConnectorRegistry, mcp_pool
 
                 pool = mcp_pool.connectors(settings)
                 if pool is not None:
