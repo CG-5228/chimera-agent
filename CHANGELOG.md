@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **The Windows CI tests run in three shards.** One runner could no longer hold the suite: green runs on `main` took 34 to 41 minutes against a 45-minute limit, and on #903 pytest ran 44:35 with 11,816 passing and nothing failing before the job was cancelled. Each shard runs whole test files chosen deterministically from `CI_TEST_SHARD`, balanced by test count, under a 30-minute limit; a test pins that the three together run every file exactly once and that the matrix and the `/3` agree. `verdict`, the only check branch protection requires, still waits on all three.
 
+## [0.67.4] - 2026-10-15
+### Fixed
+
+- **Discord bots start in the packaged desktop app.** The 0.67.3 installed app returned `ModuleNotFoundError: No module named 'discord'` in the bot status because the release build omitted the messaging extra and PyInstaller missed the adapter's lazy imports.
+
 ## [0.67.3] - 2026-10-15
 ### Fixed
 
