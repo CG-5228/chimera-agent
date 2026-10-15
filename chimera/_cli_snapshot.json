@@ -3907,6 +3907,16 @@
               "type": "float"
             },
             {
+              "help": "Maximum response characters per tool call for this server.",
+              "kind": "option",
+              "name": "max_output_chars",
+              "opts": [
+                "--max-output-chars"
+              ],
+              "required": false,
+              "type": "int"
+            },
+            {
               "help": "Environment variable containing a bearer token.",
               "kind": "option",
               "name": "token_env",
@@ -7932,7 +7942,7 @@
       "path": "workflow"
     }
   ],
-  "generated_for": "0.66.0",
+  "generated_for": "0.67.1",
   "help": "Self-evolving AI agent with an LLM-Fusion reasoning core.",
   "name": "chimera"
 }

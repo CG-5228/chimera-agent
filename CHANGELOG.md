@@ -5,13 +5,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
-
 ### Changed
 
 - **rea's target-changing tools stay available, with an alert for every call.** The tools the `rea` catalogue
-  entry lists in `exec_tools` are no longer removed on surfaces without an approver; each call is recorded in the
-  audit log and reported to the owner through the configured approval webhook.
+  entry lists in `exec_tools` are no longer removed on surfaces without an approver; each call that runs is
+  recorded in the audit log and reported to the owner through the configured approval webhook, and a call an
+  inner governance layer refuses is neither recorded nor announced.
 
+### Fixed
+
+- **Stabilise countdown and folder-wait tests.** Hold the countdown tick while checking its first paint, and wait for the second turn's `folder_busy` notice instead of relying on runner timing.
+
+## [0.67.1] - 2026-10-14
+### Added
+
+- **MCP tool responses can be capped per server.** Set `max_output_chars` or use `--max-output-chars` with
+  `chimera mcp add` to keep a large response from overwhelming the prompt; truncated output reports its original size.
+
+- **Document running rea in Chimera Desktop on Windows.** Record the measured Ghidra, Java,
+  environment, timeout, deferred-tool and response-size setup.
+
+### Fixed
+
+- **Code sessions and step logs remain valid JSON when redacting credential headers.** Redact string values before serialization so escaped quotes in a message cannot be consumed by a header pattern and make the saved conversation unreadable.
+
+- **The desktop shell takes `rustls` 0.23.46.** RustSec published four advisories against 0.23.45 on 2026-10-14
+  (RUSTSEC-2026-0346 to 0349), and `cargo audit` turned the supply-chain job on main red. 0.23.46 declares the
+  same dependencies and features, so only the version and checksum in `Cargo.lock` change.
+
+## [0.67.0] - 2026-10-13
 ### Added
 
 - **Document the rea MCP server.** Add its catalogue setup, unattended tool restrictions, prerequisites and timeout configuration to `docs/rea.md`.
@@ -27,10 +49,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   without editing `mcp.json` by hand.
 
 ### Fixed
-
-- **A refused rea tool call is no longer reported as executed.** The alert wrapper now records and notifies only
-  after a call returns without the governance refusal marker, so an approval denial or kernel block cannot produce
-  a false execution alert.
 
 - **The catalogue knows the price `llama-3.3-70b-instruct` moved to.** The live check on main went red on
   2026-10-13: the index quotes 0.59 in / 0.79 out against the row's 0.22 / 0.50. The row now carries the live

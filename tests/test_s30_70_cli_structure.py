@@ -97,6 +97,7 @@ ADDED_SINCE: dict[str, list[dict[str, Any]]] = {
     "mcp add": [
         {"kind": "option", "name": "call_timeout", "opts": ["--call-timeout"], "required": False},
         {"kind": "option", "name": "connect_timeout", "opts": ["--connect-timeout"], "required": False},
+        {"kind": "option", "name": "max_output_chars", "opts": ["--max-output-chars"], "required": False},
     ],
 }
 
