@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Added
+
+- **Bot MCP access is an explicit server allowlist.** `CHIMERA_MCP_AUTOLOAD` no longer exposes its
+  connected servers to messaging bots by itself; `CHIMERA_BOT_MCP_SERVERS` opts named servers in, with
+  rea's target-changing tools still denied on unattended bot surfaces.
+
 ### Fixed
 
 - **Stabilise countdown and folder-wait tests.** Hold the countdown tick while checking its first paint, and wait for the second turn's `folder_busy` notice instead of relying on runner timing.

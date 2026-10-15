@@ -52,6 +52,7 @@ def test_rea_write_tool_catalog_is_the_expected_set() -> None:
     ("surface", "expected"),
     [
         ("app-messaging:discord", True),
+        ("platform:discord", True),
         ("cron:task", True),
         ("a2a", True),
         ("mcp", True),

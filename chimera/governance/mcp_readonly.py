@@ -16,7 +16,7 @@ REA_WRITE_TOOLS: frozenset[str] = frozenset(next(e.exec_tools for e in CATALOG i
 def is_unattended(surface: str) -> bool:
     """Whether ``surface`` has no human available to approve a target-changing action."""
     return (
-        surface.startswith("app-messaging")
+        surface.startswith(("app-messaging", "platform:"))
         or surface.startswith("cron:")
         or surface in {"a2a", "mcp", "github-issue"}
     )
