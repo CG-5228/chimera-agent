@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **Context compaction retains deterministic run progress and recovers once from provider overflow.** Restore successful read/write targets with size and short hashes, retain recent history to a token budget, and force one compaction retry when the provider rejects an oversized prompt.
 
+- **Discord bots start in the packaged desktop app.** The 0.67.3 installed app returned `ModuleNotFoundError: No module named 'discord'` in the bot status because the release build omitted the messaging extra and PyInstaller missed the adapter's lazy imports.
+
 ## [0.67.3] - 2026-10-15
 ### Fixed
 
