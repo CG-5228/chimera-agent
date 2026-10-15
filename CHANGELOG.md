@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - **Web search supports Tavily, Firecrawl, Exa and Brave Search.** `CHIMERA_WEBSEARCH_PROVIDER=auto` selects the first configured key and automatically tries another provider after HTTP 429, respecting `Retry-After`; a fixed provider never fails over.
 
+### Fixed
+
+- **Discord bots start in the packaged desktop app.** The 0.67.3 installed app returned `ModuleNotFoundError: No module named 'discord'` in the bot status because the release build omitted the messaging extra and PyInstaller missed the adapter's lazy imports.
+
 ## [0.67.3] - 2026-10-15
 ### Fixed
 
