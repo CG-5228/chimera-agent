@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+## [0.67.3] - 2026-10-15
 ### Fixed
 
 - **Discord webhook delivery supplies an explicit User-Agent.** Discord's Cloudflare returned HTTP 403 with error 1010 for urllib's default User-Agent, preventing webhook messages from being delivered.
