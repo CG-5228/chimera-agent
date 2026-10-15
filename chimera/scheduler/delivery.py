@@ -39,6 +39,9 @@ _log = get_logger("scheduler.delivery")
 #: refused delivery is worse than a shortened one — the answer is in the result file either way.
 MAX_CHARS = 1900
 
+# Discord's Cloudflare rejects urllib's default User-Agent with error 1010.
+_USER_AGENT = "chimera-agent"
+
 #: A delivery must not hold the scheduler. Dispatch is sequential: a webhook host that hangs would
 #: delay every other job that is due, which is the failure `job_timeout` exists to prevent and this
 #: has no business reintroducing.
@@ -418,7 +421,10 @@ def deliver_to_webhook(url: str, text: str, *, timeout: float = TIMEOUT_S) -> De
 
     corpo = json.dumps(payload_for(url, clip(text))).encode("utf-8")
     req = urllib.request.Request(
-        url, data=corpo, headers={"Content-Type": "application/json"}, method="POST"
+        url,
+        data=corpo,
+        headers={"Content-Type": "application/json", "User-Agent": _USER_AGENT},
+        method="POST",
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
