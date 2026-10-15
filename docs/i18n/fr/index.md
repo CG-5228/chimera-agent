@@ -1,5 +1,5 @@
 ---
-source_sha256: 16ac522d3f1fdc1a508d268b9f88b22f75c896bd1ae6dd87839afd256e4d745f
+source_sha256: 23e0d6a10281f597d143955a12e2d2347ddd9f0ce548de655e610402d6ce63de
 ---
 
 # Chimera
@@ -19,6 +19,10 @@ Ce site est orienté tâches : choisissez ce que vous voulez faire.
 - **:material-toolbox: Faire quelque chose de concret**
   Des recettes exécutables : triage d'e-mails, brief de recherche quotidien, surveillance de dépôt.
   [Recettes →](recipes.md)
+
+- **:material-magnify: Rétro-ingénierie**
+  Connectez le serveur MCP rea pour inspecter des binaires, des processus et des applications.
+  [Serveur MCP rea →](../../rea.md)
 
 - **:material-power-plug: Connecter des outils**
   Branchez n'importe quel serveur MCP (GitHub, système de fichiers, …).

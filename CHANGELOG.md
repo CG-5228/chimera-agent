@@ -5,12 +5,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
-
 ### Added
 
 - **Bot MCP access is an explicit server allowlist.** `CHIMERA_MCP_AUTOLOAD` no longer exposes its
   connected servers to messaging bots by itself; `CHIMERA_BOT_MCP_SERVERS` opts named servers in, with
   rea's target-changing tools still denied on unattended bot surfaces.
+
+### Fixed
+
+- **Stabilise countdown and folder-wait tests.** Hold the countdown tick while checking its first paint, and wait for the second turn's `folder_busy` notice instead of relying on runner timing.
+
+## [0.67.1] - 2026-10-14
+### Added
+
+- **MCP tool responses can be capped per server.** Set `max_output_chars` or use `--max-output-chars` with
+  `chimera mcp add` to keep a large response from overwhelming the prompt; truncated output reports its original size.
+
+- **Document running rea in Chimera Desktop on Windows.** Record the measured Ghidra, Java,
+  environment, timeout, deferred-tool and response-size setup.
+
+### Fixed
+
+- **Code sessions and step logs remain valid JSON when redacting credential headers.** Redact string values before serialization so escaped quotes in a message cannot be consumed by a header pattern and make the saved conversation unreadable.
+
+- **The desktop shell takes `rustls` 0.23.46.** RustSec published four advisories against 0.23.45 on 2026-10-14
+  (RUSTSEC-2026-0346 to 0349), and `cargo audit` turned the supply-chain job on main red. 0.23.46 declares the
+  same dependencies and features, so only the version and checksum in `Cargo.lock` change.
+
+## [0.67.0] - 2026-10-13
+### Added
+
+- **Document the rea MCP server.** Add its catalogue setup, unattended tool restrictions, prerequisites and timeout configuration to `docs/rea.md`.
 
 - **Unattended surfaces deny rea's target-changing tools.** Messaging, cron, A2A, MCP and GitHub-issue jobs
   remove rea tools that execute code or mutate a target, matched from the configured MCP server name or
@@ -19,9 +44,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **MCP servers can set per-server call and connection timeouts.** Configure `call_timeout` and `connect_timeout` for
   a server instead of relying on shared limits. Slow servers, such as one running a long headless analysis, could
   exceed the fixed 120-second call timeout; per-server limits let that work take longer when needed.
+- **`chimera mcp add` accepts per-server timeout flags.** Set `--call-timeout` and `--connect-timeout` when adding a server,
+  without editing `mcp.json` by hand.
 
 ### Fixed
 
+- **The catalogue knows the price `llama-3.3-70b-instruct` moved to.** The live check on main went red on
+  2026-10-13: the index quotes 0.59 in / 0.79 out against the row's 0.22 / 0.50. The row now carries the live
+  figures, and the previous reading joins `also_seen`.
+
+- **The Task tab says what each way of running is for, and puts Run first.** The four modes were four small chips with
+  one sentence shown for whichever was selected; each is now a card carrying its own sentence. Run and "See the plan
+  first" come straight after the task, Run the only filled button, and what tunes the run (who writes the patch,
+  attempts, the three seams, the pause on untrusted content) is folded under "Options", whose summary line says what
+  is currently set. Nothing was removed.
+
+- **The rail's labels fit on one line.** In the installed 0.66.0 "Conhecimento" and "Configurações" broke mid-word onto
+  two lines under their icons (the label was 64px wide). The rail is a little wider so the longest Portuguese names fit.
 - **The catalogue knows the price `glm-5.3-flash` moved to.** The live check on main (`test_catalog_is_live`) went red
   on 2026-10-12: the index quotes 0.0232 in / 1.20 out against the row's 0.045 / 0.60. The row now carries the higher
   output figure, so a fallback never reads low, and both the old and the new readings join `also_seen`.

@@ -93,6 +93,12 @@ ADDED_SINCE: dict[str, list[dict[str, Any]]] = {
     # S30-61 Amendment 5: the wire log is shared by every gateway user, so reconciliation can be
     # scoped to one run.
     "audit reconcile": [{"kind": "option", "name": "run", "opts": ["--run"], "required": False}],
+    # Per-server MCP timeouts, so a slow server's limit is set when it is added instead of by editing mcp.json.
+    "mcp add": [
+        {"kind": "option", "name": "call_timeout", "opts": ["--call-timeout"], "required": False},
+        {"kind": "option", "name": "connect_timeout", "opts": ["--connect-timeout"], "required": False},
+        {"kind": "option", "name": "max_output_chars", "opts": ["--max-output-chars"], "required": False},
+    ],
 }
 
 

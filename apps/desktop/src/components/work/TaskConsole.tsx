@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
 import { Lifecycle } from "@/components/lifecycle/Lifecycle";
 import { CrewLauncher } from "@/components/orchestration/CrewLauncher";
@@ -83,9 +83,10 @@ export function TaskConsole({
 
   return (
     <div className="space-y-5">
+      {/* Each mode says what it is for on its own card. The sentence used to appear once, under the
+          chips, for whichever was selected: choosing meant clicking through all four to read them. */}
       <ModeStrip mode={mode} onChange={choose} disabled={busy} />
 
-      <p className="text-xs text-muted-foreground">{t(`work.mode.${mode}.what`)}</p>
       {busy ? <p className="text-xs text-warn-foreground">{t("work.busy")}</p> : null}
 
       <div className="space-y-2">
@@ -182,6 +183,7 @@ function ModeStrip({
   disabled: boolean;
 }) {
   const t = useT();
+  const id = useId();
   const refs = useRef(new Map<WorkMode, HTMLButtonElement>());
 
   // Arrow keys move within the group and the group is one tab stop, same as the tab strip above it.
@@ -207,7 +209,7 @@ function ModeStrip({
       role="radiogroup"
       aria-label={t("work.mode.label")}
       onKeyDown={onKeyDown}
-      className="flex flex-wrap items-center gap-1.5"
+      className="grid gap-2 sm:grid-cols-2"
     >
       {MODES.map((value) => {
         const on = value === mode;
@@ -221,19 +223,26 @@ function ModeStrip({
             type="button"
             role="radio"
             aria-checked={on}
+            // The name stays the mode's own; the sentence is a description, so a screen reader
+            // hears "Um agente, radio, 1 of 4" and then what it is for.
+            aria-label={t(`work.mode.${value}`)}
+            aria-describedby={`${id}-${value}`}
             tabIndex={on ? 0 : -1}
             disabled={disabled}
             onClick={() => onChange(value)}
             className={cn(
-              "rounded-chip border px-3 py-1.5 text-xs transition-colors duration-1 ease-out",
+              "flex flex-col gap-1 rounded-xl2 border px-3 py-2.5 text-left transition-colors duration-1 ease-out",
               "disabled:cursor-not-allowed disabled:opacity-50",
               focusRing,
               on
                 ? "border-accent bg-accent/10 text-foreground"
-                : "border-hairline text-muted-foreground hover:text-foreground",
+                : "border-hairline text-muted-foreground hover:bg-surface-hover hover:text-foreground",
             )}
           >
-            {t(`work.mode.${value}`)}
+            <span className="text-sm font-medium text-foreground">{t(`work.mode.${value}`)}</span>
+            <span id={`${id}-${value}`} className="text-xs leading-snug">
+              {t(`work.mode.${value}.what`)}
+            </span>
           </button>
         );
       })}

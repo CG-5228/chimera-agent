@@ -36,7 +36,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 from chimera.core.agent import AgentResult, ToolActivity, is_guidance
 from chimera.core.code_session_marks import CodeSessionMarks
 from chimera.core.context_budget import is_compaction_note, restored_task
-from chimera.core.redact import redact
+from chimera.core.redact import redact_json
 from chimera.providers.gateway import MessageLike
 from chimera.telemetry import get_logger
 
@@ -365,10 +365,9 @@ class CodeSessionStore:
         return self.root / f"{safe}.json"
 
     def save(self, session: CodeSession) -> None:
-        # Written through `redact`, the same way `steplog.py` has always written its trace, and for
-        # the same reason: this file keeps every tool observation of the conversation, and a tool
-        # that failed reports back the provider's own error body. That body has been measured to
-        # carry an echoed fragment of the prompt and the provider's internal routing trace.
+        # Redact strings before JSON serialization: redacting serialized text can consume escaped
+        # quotes or newlines inside a credential header and leave the session invalid JSON. The file
+        # keeps every tool observation, including provider error bodies that can echo prompt content.
         #
         # The cost, stated rather than hidden: this store is read BACK to continue a conversation, so
         # a credential a user pasted into the chat comes back as `[redacted]` after a restart. Within
@@ -383,7 +382,7 @@ class CodeSessionStore:
         # next turn landing mid-save could see the conversation vanish or restart.
         tmp = path.with_name(f"{path.name}.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp")
         try:
-            tmp.write_text(redact(json.dumps(session.to_dict())), encoding="utf-8")
+            tmp.write_text(json.dumps(redact_json(session.to_dict())), encoding="utf-8")
             os.replace(tmp, path)
         finally:
             tmp.unlink(missing_ok=True)

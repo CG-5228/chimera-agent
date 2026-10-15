@@ -40,6 +40,7 @@ class McpServerConfig(BaseModel):
     env: dict[str, str] = Field(default_factory=dict)
     call_timeout: float | None = None
     connect_timeout: float | None = None
+    max_output_chars: int | None = None
     url: str | None = None
     token_env: str | None = None
     oauth_authorization_url: str | None = None
@@ -62,7 +63,7 @@ class McpServerConfig(BaseModel):
             stdio.update(
                 {
                     key: result[key]
-                    for key in ("call_timeout", "connect_timeout")
+                    for key in ("call_timeout", "connect_timeout", "max_output_chars")
                     if result.get(key) is not None
                 }
             )
@@ -295,6 +296,7 @@ def _session_for(cfg: McpServerConfig, connect_timeout: float, *, interactive: b
             cfg,
             connect_timeout=configured_connect_timeout,
             call_timeout=configured_call_timeout,
+            max_output_chars=cfg.max_output_chars,
             interactive=interactive,
         )
     from chimera.integrations import StdioMCPSession
@@ -305,4 +307,5 @@ def _session_for(cfg: McpServerConfig, connect_timeout: float, *, interactive: b
         cfg.env or None,
         connect_timeout=configured_connect_timeout,
         call_timeout=configured_call_timeout,
+        max_output_chars=cfg.max_output_chars,
     )

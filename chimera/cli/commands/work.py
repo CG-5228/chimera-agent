@@ -45,6 +45,15 @@ def mcp_add(
     name: str = typer.Argument(..., help="A unique name for the server (namespaces its tools)."),
     command: str | None = typer.Option(None, "--command", "-c", help="The launch command (e.g. npx, uvx, python)."),
     url: str | None = typer.Option(None, "--url", help="A streamable-HTTP MCP endpoint."),
+    call_timeout: float | None = typer.Option(
+        None, "--call-timeout", help="Per-call timeout in seconds for this server (default 120)."
+    ),
+    connect_timeout: float | None = typer.Option(
+        None, "--connect-timeout", help="Connect timeout in seconds for this server (default 30)."
+    ),
+    max_output_chars: int | None = typer.Option(
+        None, "--max-output-chars", help="Maximum response characters per tool call for this server."
+    ),
     token_env: str | None = typer.Option(None, "--token-env", help="Environment variable containing a bearer token."),
     oauth_authorization_url: str | None = typer.Option(None, "--oauth-authorization-url", help="OAuth authorization endpoint."),
     oauth_token_url: str | None = typer.Option(None, "--oauth-token-url", help="OAuth token endpoint."),
@@ -64,11 +73,22 @@ def mcp_add(
             raise typer.Exit(code=1)
         key, value = pair.split("=", 1)
         env_map[key.strip()] = value
+    if call_timeout is not None and call_timeout <= 0:
+        console.print("[red]--call-timeout must be greater than 0[/red]")
+        raise typer.Exit(code=1)
+    if connect_timeout is not None and connect_timeout <= 0:
+        console.print("[red]--connect-timeout must be greater than 0[/red]")
+        raise typer.Exit(code=1)
+    if max_output_chars is not None and max_output_chars <= 0:
+        console.print("[red]--max-output-chars must be greater than 0[/red]")
+        raise typer.Exit(code=1)
     if bool(command) == bool(url):
         console.print("[red]choose exactly one of --command or --url[/red]")
         raise typer.Exit(code=1)
     cfg = McpServerConfig(
         name=name, command=command or "", args=list(arg or []), env=env_map, url=url,
+        call_timeout=call_timeout, connect_timeout=connect_timeout,
+        max_output_chars=max_output_chars,
         token_env=token_env, oauth_authorization_url=oauth_authorization_url,
         oauth_token_url=oauth_token_url, oauth_client_id=oauth_client_id,
         oauth_redirect_uri=oauth_redirect_uri, oauth_scope=oauth_scope,

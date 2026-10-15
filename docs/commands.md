@@ -1658,6 +1658,9 @@ chimera mcp add NAME
 | --- | --- | --- |
 | `--command`, `-c` | The launch command (e.g. npx, uvx, python). |  |
 | `--url` | A streamable-HTTP MCP endpoint. |  |
+| `--call-timeout` | Per-call timeout in seconds for this server (default 120). |  |
+| `--connect-timeout` | Connect timeout in seconds for this server (default 30). |  |
+| `--max-output-chars` | Maximum response characters per tool call for this server. |  |
 | `--token-env` | Environment variable containing a bearer token. |  |
 | `--oauth-authorization-url` | OAuth authorization endpoint. |  |
 | `--oauth-token-url` | OAuth token endpoint. |  |
