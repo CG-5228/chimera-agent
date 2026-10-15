@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+## [0.67.2] - 2026-10-14
 ### Added
 
 - **Bot MCP access is an explicit server allowlist.** `CHIMERA_MCP_AUTOLOAD` no longer exposes its
