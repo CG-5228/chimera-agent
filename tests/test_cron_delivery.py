@@ -38,7 +38,12 @@ class _Recebedor(BaseHTTPRequestHandler):
         n = int(self.headers.get("Content-Length", 0))
         corpo = self.rfile.read(n).decode("utf-8")
         type(self).recebidos.append(
-            {"path": self.path, "body": json.loads(corpo), "ctype": self.headers.get("Content-Type")}
+            {
+                "path": self.path,
+                "body": json.loads(corpo),
+                "ctype": self.headers.get("Content-Type"),
+                "user_agent": self.headers.get("User-Agent"),
+            }
         )
         self.send_response(type(self).status)
         self.end_headers()
@@ -71,6 +76,8 @@ def test_the_answer_reaches_the_webhook(servidor) -> None:
     enviado = _Recebedor.recebidos[0]
     assert enviado["body"] == {"content": "o site tem 3 arquivos"}
     assert enviado["ctype"] == "application/json"
+    assert enviado["user_agent"]
+    assert not enviado["user_agent"].startswith("Python-urllib")
 
 
 def test_slack_gets_the_field_slack_reads(servidor) -> None:
