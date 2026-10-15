@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **rea's target-changing tools stay available, with an alert for every call.** The tools the `rea` catalogue
+  entry lists in `exec_tools` are no longer removed on surfaces without an approver; each call is recorded in the
+  audit log and reported to the owner through the configured approval webhook.
+
 ### Added
 
 - **Document the rea MCP server.** Add its catalogue setup, unattended tool restrictions, prerequisites and timeout configuration to `docs/rea.md`.
@@ -21,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   without editing `mcp.json` by hand.
 
 ### Fixed
+
+- **A refused rea tool call is no longer reported as executed.** The alert wrapper now records and notifies only
+  after a call returns without the governance refusal marker, so an approval denial or kernel block cannot produce
+  a false execution alert.
 
 - **The catalogue knows the price `llama-3.3-70b-instruct` moved to.** The live check on main went red on
   2026-10-13: the index quotes 0.59 in / 0.79 out against the row's 0.22 / 0.50. The row now carries the live

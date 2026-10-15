@@ -567,11 +567,7 @@ def governed_profile(
         if deny is not None
         else list(settings.tool_denylist)
     )
-    from chimera.governance.mcp_readonly import is_unattended, read_only_denials
 
-    if is_unattended(surface):
-        # Unattended surfaces cannot approve rea actions that execute or alter a target.
-        deny_names.extend(read_only_denials(settings))
     if allow_names is not None or deny_names:
         registry = restrict_registry(registry, allow=allow_names, deny=deny_names, audit=audit)
         _log.info("tool fence applied on %s", surface or "(unnamed surface)")
@@ -601,7 +597,11 @@ def governed_profile(
         lineage=ledger.lineage, taint=ledger.record_fetch,
     )
     if step.mode == "off":
-        return step.registry, step.approvals
+        from chimera.governance.mcp_readonly import alert_rea_tools
+
+        return alert_rea_tools(
+            step.registry, settings=settings, surface=surface, audit=audit
+        ), step.approvals
 
     if instruction is not None:
         ledger.set_instruction(instruction, workspace=workspace)
@@ -613,4 +613,7 @@ def governed_profile(
     registry = ledger_registry(
         step.registry, ledger, audit=audit, narrow_on_taint=True, approve=step.approve
     )
+    from chimera.governance.mcp_readonly import alert_rea_tools
+
+    registry = alert_rea_tools(registry, settings=settings, surface=surface, audit=audit)
     return registry, step.approvals
