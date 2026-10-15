@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Added
+
+- **Project and global Markdown prompt commands.** Terminal chat and the TUI discover namespaced templates in `.chimera/commands/` and `<CHIMERA_HOME>/commands/`, expand `$ARGUMENTS` and `$1`… into ordinary message text, and keep embedded slash commands authoritative; template content is never executed.
+
 ### Fixed
 
 - **Discord bots start in the packaged desktop app.** The 0.67.3 installed app returned `ModuleNotFoundError: No module named 'discord'` in the bot status because the release build omitted the messaging extra and PyInstaller missed the adapter's lazy imports.
