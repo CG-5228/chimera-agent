@@ -526,6 +526,26 @@ def governed_profile(
     from chimera.integrations.openapi_store import mount as mount_connectors
     from chimera.integrations.openapi_store import unattended_surface_may_load
 
+    # A bot has no human at the keyboard to approve calls, and its inbox may be public. Global MCP
+    # autoload therefore does not grant bots access: the owner must name each server separately.
+    # Do this before the explicit fence below, so rea's configured target-changing tools are denied
+    # together with every other tool, rather than being mounted after governance has run.
+    if surface.startswith(("app-messaging:", "platform:")) and settings.bot_mcp_servers.strip():
+        selected = {name.strip() for name in settings.bot_mcp_servers.split(",") if name.strip()}
+        if selected and settings.mcp_autoload:
+            try:
+                from chimera.integrations import ConnectorRegistry
+                from chimera.integrations import mcp_pool
+
+                pool = mcp_pool.connectors(settings)
+                if pool is not None:
+                    bot_connectors = ConnectorRegistry()
+                    for name in sorted(selected.intersection(pool.names())):
+                        bot_connectors.register(pool.get(name))
+                    bot_connectors.into_tool_registry(registry)
+            except Exception as exc:  # noqa: BLE001 — MCP must not prevent a bot from starting
+                _log.warning("bot MCP servers not loaded on %s — %s", surface, type(exc).__name__)
+
     refused = unattended_surface_may_load(settings, surface)
     if refused:
         _log.warning("connectors: not loaded on %s — %s", surface, refused)
@@ -569,7 +589,7 @@ def governed_profile(
     )
     from chimera.governance.mcp_readonly import is_unattended, read_only_denials
 
-    if is_unattended(surface):
+    if is_unattended(surface) or surface.startswith("platform:"):
         # Unattended surfaces cannot approve rea actions that execute or alter a target.
         deny_names.extend(read_only_denials(settings))
     if allow_names is not None or deny_names:

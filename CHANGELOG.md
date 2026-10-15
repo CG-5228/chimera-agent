@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Bot MCP access is an explicit server allowlist.** `CHIMERA_MCP_AUTOLOAD` no longer exposes its
+  connected servers to messaging bots by itself; `CHIMERA_BOT_MCP_SERVERS` opts named servers in, with
+  rea's target-changing tools still denied on unattended bot surfaces.
+
 - **Unattended surfaces deny rea's target-changing tools.** Messaging, cron, A2A, MCP and GitHub-issue jobs
   remove rea tools that execute code or mutate a target, matched from the configured MCP server name or
   command. They cannot ask a person to approve those actions, so they must not run them unattended.

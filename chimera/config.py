@@ -450,6 +450,10 @@ class Settings(BaseSettings):
     # restart to take effect. MCP tool output is untrusted (the `untrusted_output` flag flows to
     # governance). Configure servers with `chimera mcp add` or the desktop MCP screen. ---
     mcp_autoload: bool = Field(default=False, validation_alias="CHIMERA_MCP_AUTOLOAD")
+    # A bot can be reached by someone other than the owner, so global MCP autoload is not consent
+    # to hand its servers to bots. This explicit allowlist opts selected server names into bot
+    # sessions; rea is mounted under the unattended read-only fence in governed_profile.
+    bot_mcp_servers: str = Field(default="", validation_alias="CHIMERA_BOT_MCP_SERVERS")
     # Reach MCP tools on demand (mcp_list / mcp_describe / mcp_call) instead of declaring every
     # server's full schema on every step of every turn. The comparable product that measured this
     # reported -46.9% of total agent tokens.
