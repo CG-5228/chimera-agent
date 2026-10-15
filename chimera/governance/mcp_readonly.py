@@ -105,13 +105,17 @@ def alert_rea_tools(
     durable in-app record when no webhook is configured. Wrapping is independent of the surface's
     approval capability, so any existing approval or ledger layer remains active around these tools.
     """
+    names = set(rea_alert_names(settings))
+    tools = registry.tools()
+    if not any(tool.name in names for tool in tools):
+        # Off-mode tests require identity, and an installation without rea must remain unchanged.
+        return registry
     if alert is None:
         from chimera.governance.approval import deliverer_for
 
         alert = deliverer_for(settings)
-    names = set(rea_alert_names(settings))
     wrapped = ToolRegistry.like(registry)
-    for tool in registry.tools():
+    for tool in tools:
         wrapped.register(
             ReaAlertTool(tool, surface=surface, audit=audit, alert=alert)
             if tool.name in names

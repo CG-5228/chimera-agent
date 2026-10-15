@@ -69,6 +69,25 @@ def test_alert_names_without_rea_server(settings: Settings) -> None:
 
     assert rea_alert_names(settings) == []
 
+def test_alert_rea_tools_without_rea_returns_same_registry(settings: Settings) -> None:
+    settings.home.mkdir(parents=True, exist_ok=True)
+    (settings.home / "mcp.json").write_text(
+        json.dumps([{"name": "other", "command": "node", "args": ["server.js"]}]),
+        encoding="utf-8",
+    )
+    registry = ToolRegistry()
+    registry.register(_FakeTool("ordinary_tool"))
+
+    assert (
+        alert_rea_tools(
+            registry,
+            settings=settings,
+            surface="test",
+            audit=_FakeAudit(),
+        )
+        is registry
+    )
+
 
 def test_alert_names_match_package_when_name_differs(settings: Settings) -> None:
     settings.home.mkdir(parents=True, exist_ok=True)
