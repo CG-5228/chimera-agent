@@ -3035,6 +3035,11 @@
               }
             ]
           },
+          "selected_model": {
+            "default": "",
+            "title": "Selected Model",
+            "type": "string"
+          },
           "workspace": {
             "title": "Workspace",
             "type": "string"
@@ -3339,6 +3344,11 @@
               }
             ],
             "title": "Model"
+          },
+          "model_pinned": {
+            "default": false,
+            "title": "Model Pinned",
+            "type": "boolean"
           },
           "open_file": {
             "anyOf": [
@@ -9778,6 +9788,17 @@
               }
             ],
             "title": "Output Per M"
+          },
+          "reasoning": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoning"
           },
           "recommended": {
             "default": false,
