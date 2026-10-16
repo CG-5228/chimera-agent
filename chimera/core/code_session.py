@@ -147,6 +147,29 @@ def trim_to_a_safe_boundary(messages: list[MessageLike], limit: int) -> list[Mes
     return []  # no user message at all: nothing here is a safe place to resume from
 
 
+#: The owner's switches for a conversation's pull request, both OFF until the owner turns them on.
+PULL_REQUEST_OPTIONS = ("fix_on_ci_failure", "cleanup_on_merge")
+
+
+def pull_request_record(raw: object) -> dict[str, Any] | None:
+    """A stored pull request record, validated, or None when there is none or it is unusable.
+
+    Read from a file an older or newer version may have written, so nothing in it is trusted: the
+    number must be a positive int (a bool is an int in Python and is refused), the URL a string, and
+    each option is ON only when stored as exactly ``True`` — anything else reads as the default, off.
+    """
+    if not isinstance(raw, dict):
+        return None
+    number = raw.get("number")
+    if not isinstance(number, int) or isinstance(number, bool) or number < 1:
+        return None
+    url = raw.get("url")
+    record: dict[str, Any] = {"number": number, "url": url[:2048] if isinstance(url, str) else ""}
+    for option in PULL_REQUEST_OPTIONS:
+        record[option] = raw.get(option) is True
+    return record
+
+
 @dataclass
 class CodeSession:
     """A multi-turn coding conversation over one workspace."""
@@ -198,6 +221,15 @@ class CodeSession:
     the front as a conversation grows, and the last receipt always belongs to the last turn;
     counting forward would silently shift every receipt onto the wrong turn the first time a
     conversation got long enough to trim.
+    """
+    pull_request: dict[str, Any] | None = None
+    """The pull request opened from this conversation's project, with the owner's two options.
+
+    Optional and absent from every file written before it existed, which reads as "no PR". Written
+    only through :meth:`CodeSessionStore.record_pull_request` and
+    :meth:`CodeSessionStore.set_pull_request_options`, never by a turn: a turn holds the copy it
+    loaded when it started, and :meth:`CodeSessionStore.save` keeps the stored record over it, so a
+    turn that ran while the owner opened the PR cannot erase the record by saving its transcript.
     """
 
     def send(
@@ -327,6 +359,7 @@ class CodeSession:
             "selected_model": self.selected_model,
             "messages": [_as_dict(m) for m in self.messages],
             "receipts": self.receipts[-MAX_RECEIPTS:],
+            **({"pull_request": self.pull_request} if self.pull_request else {}),
         }
 
     def remember_receipt(self, receipt: dict[str, Any]) -> None:
@@ -402,11 +435,19 @@ class CodeSessionStore:
         # Beside the folder, not in it: `list_meta` reads every `*.json` in the folder as a
         # conversation. What the list derives a conversation's state from, and its archive.
         self.marks = CodeSessionMarks(self.root.with_name(f"{self.root.name}.marks.json"))
+        # Serialises this store's writes of one file against each other: the PR record is a
+        # read-modify-write of the stored document, and a turn's save landing between its read and
+        # its write would otherwise drop either the record or the turn.
+        self._write_lock = threading.RLock()
         # What `list_meta` derived from each file, keyed by the file's `(mtime_ns, size)` when it
         # was read. Only the list's row is kept, never the conversation. `None` marks a file that
         # did not parse at that version: omitted, and warned about once rather than on every list.
         self._meta_cache: dict[str, tuple[tuple[int, int], dict[str, Any] | None]] = {}
         self._meta_lock = threading.Lock()
+        # The PR record of each file, keyed the same way and under the same lock. `save` must keep
+        # the STORED record over the turn's stale copy, and reading the file back on every save to
+        # learn it would undo the cache above: a save followed by a list would read the file again.
+        self._pull_request_cache: dict[str, tuple[tuple[int, int], dict[str, Any] | None]] = {}
 
     def _path(self, session_id: str) -> Path:
         # The id is generated here (a uuid hex), but this is also reachable from an API parameter,
@@ -428,13 +469,24 @@ class CodeSessionStore:
         # credential shapes plus this process's own environment secrets), so ordinary code and prose
         # pass through untouched.
         path = self._path(session.session_id)
+        with self._write_lock:
+            document = session.to_dict()
+            # The stored PR record wins over the session's copy (see `CodeSession.pull_request`):
+            # only the two store methods below change it, and a turn saving its transcript is not
+            # one of them.
+            stored = self._stored_pull_request(path)
+            if stored is not None:
+                document["pull_request"] = stored
+            self._write(path, redact_json(document))
+
+    def _write(self, path: Path, document: object) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         # Atomic: written beside the file, then put in its place. A reader that met half a file used
         # to read it as unreadable, and `load` starts an unreadable conversation fresh, so a list or a
         # next turn landing mid-save could see the conversation vanish or restart.
         tmp = path.with_name(f"{path.name}.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp")
         try:
-            payload = json.dumps(redact_json(session.to_dict()))
+            payload = json.dumps(document)
             tmp.write_text(payload, encoding="utf-8")
             os.replace(tmp, path)
         finally:
@@ -447,8 +499,86 @@ class CodeSessionStore:
             meta = _meta_from(json.loads(payload), path.stem, st.st_mtime)
         except (OSError, ValueError):
             return
+        record = (
+            pull_request_record(document.get("pull_request"))
+            if isinstance(document, dict)
+            else None
+        )
         with self._meta_lock:
             self._meta_cache[str(path)] = ((st.st_mtime_ns, st.st_size), meta)
+            self._pull_request_cache[str(path)] = ((st.st_mtime_ns, st.st_size), record)
+
+    @staticmethod
+    def _read_document(path: Path) -> dict[str, Any] | None:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
+        except (OSError, ValueError):
+            return None
+        return data if isinstance(data, dict) else None
+
+    def _stored_pull_request(self, path: Path) -> dict[str, Any] | None:
+        try:
+            st = path.stat()
+        except OSError:
+            return None  # no file, so no record — and nothing to read
+        version = (st.st_mtime_ns, st.st_size)
+        with self._meta_lock:
+            cached = self._pull_request_cache.get(str(path))
+        if cached is not None and cached[0] == version:
+            return dict(cached[1]) if cached[1] is not None else None
+        data = self._read_document(path)
+        record = pull_request_record(data.get("pull_request")) if data is not None else None
+        with self._meta_lock:
+            self._pull_request_cache[str(path)] = (version, record)
+        return dict(record) if record is not None else None
+
+    def pull_request_of(self, session_id: str) -> dict[str, Any] | None:
+        """The PR recorded on a stored conversation, or None (no conversation, or no PR)."""
+        return self._stored_pull_request(self._path(session_id))
+
+    def record_pull_request(self, session_id: str, *, number: int, url: str) -> bool:
+        """Write the PR the owner just opened onto a stored conversation; False when there is none.
+
+        Only an EXISTING conversation is written: creating a file here would conjure a conversation
+        with no turns into the sidebar. Recording the same number again keeps the owner's options;
+        a different number is a different PR, and options given for one PR are not consent for the
+        next, so they go back to off.
+        """
+        record = pull_request_record({"number": number, "url": url})
+        if record is None:
+            return False
+        path = self._path(session_id)
+        with self._write_lock:
+            data = self._read_document(path)
+            if data is None:
+                return False
+            before = pull_request_record(data.get("pull_request"))
+            if before is not None and before["number"] == number:
+                record.update({k: before[k] for k in PULL_REQUEST_OPTIONS})
+            data["pull_request"] = record
+            self._write(path, data)
+        return True
+
+    def set_pull_request_options(
+        self, session_id: str, options: dict[str, bool]
+    ) -> dict[str, Any] | None:
+        """Change the owner's options on a conversation's PR; None when no PR is recorded.
+
+        Unknown keys are ignored rather than stored, so this cannot become a way to write arbitrary
+        fields into the transcript file.
+        """
+        path = self._path(session_id)
+        with self._write_lock:
+            data = self._read_document(path)
+            record = pull_request_record(data.get("pull_request")) if data is not None else None
+            if data is None or record is None:
+                return None
+            for option in PULL_REQUEST_OPTIONS:
+                if option in options:
+                    record[option] = options[option] is True
+            data["pull_request"] = record
+            self._write(path, data)
+        return record
 
     def load_existing(self, session_id: str, agent: SupportsCodeRun) -> CodeSession | None:
         """The stored session, or None when nothing readable is stored under this id.
@@ -463,12 +593,15 @@ class CodeSessionStore:
         # A conversation can have been explicitly pinned before its first transcript was saved
         # (for example, a turn that failed before the provider returned). That choice is durable
         # session state too; treating the file as nonexistent would let a changed global default
-        # overwrite it on the next turn.
-        return (
-            stored
-            if stored.messages or stored.receipts or stored.workspace or stored.selected_model
-            else None
+        # overwrite it on the next turn. The same holds for a PR recorded on it.
+        has = (
+            stored.messages
+            or stored.receipts
+            or stored.workspace
+            or stored.pull_request
+            or stored.selected_model
         )
+        return stored if has else None
 
     def refresh(self, session: CodeSession) -> None:
         """Bring ``session`` up to what is stored now: its messages, receipts and, if it has none,
@@ -483,6 +616,7 @@ class CodeSessionStore:
             return
         session.messages = stored.messages
         session.receipts = stored.receipts
+        session.pull_request = stored.pull_request
         if not session.workspace:
             session.workspace = stored.workspace
         if not session.pin_changed:
@@ -514,6 +648,8 @@ class CodeSessionStore:
             # rather than a defect: an old conversation has no accounting to show, and saying so by
             # showing none is right.
             receipts=[r for r in data.get("receipts", []) if isinstance(r, dict)],
+            # Absent in every file written before C1, which is the ordinary "no PR" case.
+            pull_request=pull_request_record(data.get("pull_request")),
         )
 
     def stored_model(self, session_id: str) -> str:
@@ -582,6 +718,8 @@ class CodeSessionStore:
         with self._meta_lock:
             for gone in [k for k in self._meta_cache if k not in seen]:
                 del self._meta_cache[gone]
+            for gone in [k for k in self._pull_request_cache if k not in seen]:
+                del self._pull_request_cache[gone]
         out.sort(key=lambda m: float(m["updated_at"]), reverse=True)
         return out
 
@@ -602,6 +740,7 @@ class CodeSessionStore:
         path.unlink()
         with self._meta_lock:
             self._meta_cache.pop(str(path), None)
+            self._pull_request_cache.pop(str(path), None)
         self.marks.forget(session_id)
         return True
 
@@ -650,6 +789,10 @@ class CodeSessionStore:
             return None
         new_id = uuid.uuid4().hex
         data["session_id"] = new_id
+        # The one field a fork does NOT carry: the PR and its options belong to the conversation
+        # that opened it. Two conversations holding one PR would be two places able to archive and
+        # clean up the same worktree, and the owner switched the option on in only one of them.
+        data.pop("pull_request", None)
         target = self._path(new_id)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(data), encoding="utf-8")
