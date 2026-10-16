@@ -94,7 +94,11 @@ def test_the_api_refuses_without_the_token_and_answers_with_the_records(sandbox:
     assert request(record.url, "", "GET", "/api/info")[0] == 401
     assert request(record.url, "not-the-token", "GET", "/api/sessions")[0] == 401
     assert request(record.url, record.token, "GET", "/api/info")[0] == 200
-    assert request(record.url, "", "GET", "/api/health")[0] == 200, "health stays open, as before"
+    # Health is behind the token too: an open route on a loopback port is a control surface any
+    # local process can reach (`require_server_token` in chimera/api/app.py), so it answers the
+    # holder of the record's token and nobody else.
+    assert request(record.url, "", "GET", "/api/health")[0] == 401
+    assert request(record.url, record.token, "GET", "/api/health")[0] == 200
 
 
 def test_two_starts_at_once_leave_one_service(sandbox: ServiceSandbox) -> None:
