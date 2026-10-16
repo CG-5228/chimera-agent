@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 ### Added
 
+- **The Code agent can ask the user a bounded question.** `ask_user` pauses an attended Code turn for an option or free-text answer, returns an explicit no-response result on timeout, and remains a distinct data-only kind that cannot approve a governed action. Terminal, bot, and unattended turns do not register it.
+
 - **Global and nested `AGENTS.md` instructions are reloaded with receipt provenance.** Owner guidance from `CHIMERA_HOME/AGENTS.md` precedes project rules; focused nested files share the existing character budget, and changed instruction versions are announced without copying their contents into the receipt. Nested guidance discovered during a read is appended to conversation history without rebuilding the stable system prompt or changing the open edit.
 
 - **Web search supports Tavily, Firecrawl, Exa and Brave Search.** `CHIMERA_WEBSEARCH_PROVIDER=auto` selects the first configured key and automatically tries another provider after HTTP 429, respecting `Retry-After`; a fixed provider never fails over.
