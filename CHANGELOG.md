@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 ### Added
 
+- **One set of catalog components for Skills, Connectors and Plugins.** The desktop gains shared catalog primitives (screen with Mine/Discover, search with the `/` shortcut and a two-step Esc, filter and sort menus kept in the address, sections, cards, status pill, skeleton) and a neutral item model. A card says what an item runs before who made it, keeps a non-installable item visible with the reason, shows a vendor badge only when the catalog flag and the pinned repository's owner both prove it, and sorts by GitHub stars with items lacking data at the end rather than as zero; the model has no install counts, and a test fails if one appears. Nothing uses the screen yet; the next PRs move Plugins, Skills and Connectors onto it. (#983)
+
 - **MCP servers that sign in with OAuth connect natively, registering themselves.** Chimera's HTTP MCP client now discovers the server's authorization server (RFC 9728 / RFC 8414), registers a client dynamically when none is configured (RFC 7591), and signs in with the authorization code and PKCE S256 on a loopback redirect, with the `resource` indicator; tokens are refreshed and stored in the OS keychain (or a 0600 file in the data folder), never in `mcp.json`, logs or routes. Notion, Linear and similar hosted servers work without the `mcp-remote` bridge. A browser sign-in opens only from the owner's screen (Connect) or an interactive `chimera mcp login`; Test, bots, cron and `serve` use stored tokens or say to connect in the app. The agent's read tools and shell refuse the token folder. (#981)
 
 ### Changed
