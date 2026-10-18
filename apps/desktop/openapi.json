@@ -11548,6 +11548,7 @@
       "MemoryProfileOut": {
         "properties": {
           "persona": {
+            "description": "The persona facts as records, with source and provenance. What a screen renders.",
             "items": {
               "$ref": "#/components/schemas/MemoryItemOut"
             },
@@ -11555,6 +11556,7 @@
             "type": "array"
           },
           "profile": {
+            "description": "The persona facts ranked and joined one per line, as the agent receives them. A fact learned from untrusted content keeps its English label for the model. Not for display: render `persona`.",
             "title": "Profile",
             "type": "string"
           }
