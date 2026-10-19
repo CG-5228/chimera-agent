@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+## [0.70.0] - 2026-10-19
 ### Added
 
 - **The terminal chat now compacts, plans and undoes like the desktop.** `chimera chat` and `chimera assist` compact the context by default with the desktop's policy (`--no-compact` turns it off). `/plan <task>` shows a plan first and runs the task only once you approve it; approving pre-approves no risky action. `/undo N` lists the files of the last N turns, asks, and puts them back through the same durable store the Code screen uses, keeping any file you edited afterwards. Plain `/undo` still takes back the last turn. (#1015)
