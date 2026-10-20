@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **Self-improvement keeps its hands off the tests.** A lesson or skill is saved only when it points to the run that shows it, and an attempt that changed tests or the verifier's settings is never learned from — unless whoever started the run explicitly allowed editing tests. (#1035)
+
 - **A sub-agent says how it stopped.** Its answer reaches the main agent with a status line — finished, or cut off and marked incomplete — and its text is treated as data, not instructions. (#1038)
 
 - **A declined command is not asked for again in the same turn.** After you (or the host-execution setting) say no to running a command, the agent is told at once that commands are off for the rest of the turn and carries on without them, instead of piling up approval requests that expire. Allowing commands for the folder mid-turn lifts it. (#1036)
