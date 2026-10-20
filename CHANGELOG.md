@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **A sub-agent says how it stopped.** Its answer reaches the main agent with a status line — finished, or cut off and marked incomplete — and its text is treated as data, not instructions. (#1038)
+
 - **A declined command is not asked for again in the same turn.** After you (or the host-execution setting) say no to running a command, the agent is told at once that commands are off for the rest of the turn and carries on without them, instead of piling up approval requests that expire. Allowing commands for the folder mid-turn lifts it. (#1036)
 
 - **Following a turn through the bridge no longer floods the caller.** A job's default answer is a short summary — recent events, the final answer up to 3,000 characters, every cut marked — and it always lists every approval or question still waiting. The full history is one `since` away. (#1034)
