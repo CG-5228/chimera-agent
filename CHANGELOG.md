@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **A token-leak test no longer fails by chance.** It used random hexadecimal tokens, and five of their characters could match an id in the response; the tokens are now fixed, varied and free of hexadecimal letters, and a control case shows a real leak is still caught. The nightly secret scan no longer flags the fake keys in one test file. (#1029)
+
 - **The model catalogue no longer offers DeepSeek R1, which OpenRouter withdrew.** Where it was a default, the DeepSeek model the catalogue already lists for the same role takes its place, and the live price of `deepseek-v4-flash-0731` is now 0.44 in and 1.32 out per million tokens. The check that compares the catalogue with the provider every day on main was failing on both. (#1028)
 
 - **The stale-consent tests no longer fail on a slow Windows runner.** They compared real latencies on a shared CI machine with an absolute bound; they now check the approval path and that the gap is measured. The pre-registered 1.2-second bound is unchanged and reported by the bench, where 1.2038 seconds still counts as a violation. (#1023)
