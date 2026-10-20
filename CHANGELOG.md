@@ -35,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **A connection that drops in the middle of an answer no longer ends the turn.** The interrupted step is sent again once, and a failed tool is retried only when it only reads and the failure was a network hiccup; a permission refusal is reported and not repeated. (#1037)
+
 - **The Code screen's Explorer is governed like the turn it serves.** What it reads is audited, honours your denied tools, and marks the rest of the turn as having read outside content; anything that would need your approval is refused rather than run unasked. (#1039)
 
 - **Usage totals no longer turn "not reported" into zero.** When a provider does not say how many prompt tokens came from its cache, totals now show "not reported" instead of adding a 0 — the old totals could read as no caching at all while each turn's receipt showed most of the prompt cached. Traces also record when the cache stops answering although the prompt prefix did not change. (#1031)
