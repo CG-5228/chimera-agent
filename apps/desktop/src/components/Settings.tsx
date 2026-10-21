@@ -9,6 +9,7 @@ import {
   removeBrowserTrustedSite,
   stopBrowserLink,
   unpairBrowserLink,
+  issueBrowserPairCode,
   getConfig,
   getDoctor,
   getInstructions,
@@ -583,6 +584,23 @@ function BrowserLinkSettings() {
   const status = useQuery({ queryKey: ["browser-link"], queryFn: getBrowserLink, refetchInterval: 5000 });
   const refresh = () => void qc.invalidateQueries({ queryKey: ["browser-link"] });
   const [busy, setBusy] = useState(false);
+  const [pairingCode, setPairingCode] = useState<{ code: string; expiresIn: number } | null>(null);
+  const paired = status.data?.paired === true;
+  // A code that expired or was used is not one to keep showing: the owner would type it in vain.
+  useEffect(() => {
+    if (!pairingCode) return;
+    if (paired) { setPairingCode(null); return; }
+    const timer = window.setTimeout(() => setPairingCode(null), pairingCode.expiresIn * 1000);
+    return () => window.clearTimeout(timer);
+  }, [pairingCode, paired]);
+  const pair = async () => {
+    setBusy(true);
+    try {
+      const result = await issueBrowserPairCode();
+      setPairingCode({ code: result.code, expiresIn: result.expires_in });
+      refresh();
+    } finally { setBusy(false); }
+  };
   const stop = async () => {
     setBusy(true);
     try { await stopBrowserLink(); refresh(); } finally { setBusy(false); }
@@ -597,9 +615,14 @@ function BrowserLinkSettings() {
     <Row label={t("settings.row.browserLink")} hint={t("settings.hint.browserLink")}>
       <div className="flex flex-col gap-2">
         <p>{status.isError ? t("settings.browserLink.unavailable") : state}</p>
+        {status.data?.paired ? <p>{status.data.key_store === "vault" ? t("settings.browserLink.keyVault") : t("settings.browserLink.keyFile")}</p> : null}
+        {!status.data?.paired ? <p>{t("settings.browserLink.pairCode")}</p> : null}
+        {pairingCode ? <p>{t("settings.browserLink.pairingCode", { code: pairingCode.code, seconds: String(pairingCode.expiresIn) })}</p> : null}
         {!status.data?.paired ? <p className="max-w-prose text-xs text-muted-foreground">{t("settings.browserLink.install")} <code>python scripts/register_chrome_host.py &lt;ID-da-extensão&gt; --apply</code></p> : null}
         <div className="flex gap-2">
           <Button size="sm" variant="outline" disabled={busy} onClick={refresh}>{t("settings.browserLink.refresh")}</Button>
+          {!status.data?.paired ? <Button size="sm" variant="outline" disabled={busy} onClick={() => void pair()}>{t("settings.browserLink.pair")}</Button> : null}
+          {status.data?.paired ? <span className="sr-only">{t("settings.browserLink.paired")}</span> : null}
           {status.data?.connected ? <Button size="sm" variant="outline" disabled={busy} onClick={() => void stop()}>{t("settings.browserLink.stop")}</Button> : null}
           {status.data?.paired ? <Button size="sm" variant="outline" disabled={busy} onClick={() => void unpair()}>{t("settings.browserLink.unpair")}</Button> : null}
         </div>

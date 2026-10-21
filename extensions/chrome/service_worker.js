@@ -1,6 +1,8 @@
 const HOST = 'app.chimera.browser';
 const CDP = '1.3';
 let nativePort;
+let pairingRequestId = 0;
+const pairingPending = new Map();
 let groupId;
 let activeTabId;
 let nextId = 1;
@@ -516,11 +518,32 @@ async function handle(message) {
   }
 }
 
+function pairUsingCode(code) {
+  return new Promise((resolve, reject) => {
+    const requestId = `pair-${++pairingRequestId}`;
+    pairingPending.set(requestId, { resolve, reject });
+    try { nativePort?.postMessage({ id: requestId, op: 'pair', code }); }
+    catch { pairingPending.delete(requestId); reject(new Error('Pairing unavailable')); }
+    setTimeout(() => {
+      const pending = pairingPending.get(requestId);
+      if (pending) { pairingPending.delete(requestId); reject(new Error('Pairing timed out')); }
+    }, 130000);
+  });
+}
+
 function connectNative() {
   if (nativePort) return;
   nativePort = chrome.runtime.connectNative(HOST);
   nativePort.onMessage.addListener(async message => {
-    if (!message || typeof message.op !== 'string') return;
+    if (!message) return;
+    const pairing = pairingPending.get(message.id);
+    if (pairing) {
+      pairingPending.delete(message.id);
+      if (message.ok) pairing.resolve(message.result);
+      else pairing.reject(new Error(message.error || 'Pairing failed'));
+      return;
+    }
+    if (typeof message.op !== 'string') return;
     try {
       const result = await handle(message);
       nativePort?.postMessage({ id: message.id, ok: true, result });
@@ -530,6 +553,8 @@ function connectNative() {
   });
   nativePort.onDisconnect.addListener(() => {
     nativePort = undefined;
+    for (const pending of pairingPending.values()) pending.reject(new Error('Pairing disconnected'));
+    pairingPending.clear();
     setStatus('Disconnected');
   });
   setStatus('Connected');
@@ -540,6 +565,15 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     chrome.storage.session.get(['chimeraStatus', 'chimeraRequestedOrigin']).then(value => sendResponse({
       status: value.chimeraStatus || 'Stopped', requestedOrigin: value.chimeraRequestedOrigin || '',
     }));
+    return true;
+  }
+  if (request.op === 'pair') {
+    // Only the popup asks to pair; a pairing request coming from the host side is never honoured.
+    if (typeof request.code !== 'string' || !/^\d{6}$/.test(request.code)) { sendResponse({ ok: false }); return false; }
+    connectNative();
+    pairUsingCode(request.code)
+      .then(result => sendResponse({ ok: result?.ok === true }))
+      .catch(() => sendResponse({ ok: false }));
     return true;
   }
   if (request.op === 'stop') {

@@ -12,14 +12,19 @@ from pathlib import Path
 HOST_NAME = "app.chimera.browser"
 
 
-def manifest(extension_id: str, executable: str) -> dict[str, object]:
-    return {
+def manifest(
+    extension_id: str, executable: str, expected_server_executable: str | None = None
+) -> dict[str, object]:
+    value: dict[str, object] = {
         "name": HOST_NAME,
         "description": "Chimera browser host for reading and interacting with owner-authorized Chrome tabs",
         "path": str(Path(executable).resolve()),
         "type": "stdio",
         "allowed_origins": [f"chrome-extension://{extension_id}/"],
     }
+    if expected_server_executable is not None:
+        value["expected_server_executable"] = str(Path(expected_server_executable).resolve())
+    return value
 
 
 def _on_windows() -> bool:
@@ -27,11 +32,41 @@ def _on_windows() -> bool:
     return os.name == "nt"
 
 
+def _base_interpreter(python: Path) -> Path:
+    """The image a venv interpreter actually runs as, which is what the pipe server reports.
+
+    On Windows a venv's `Scripts\\python.exe` is a launcher that starts the base interpreter, and
+    `GetNamedPipeServerProcessId` names that base image. Recording the launcher made every real app
+    fail the check and the host retry forever (E5 review).
+    """
+    if python == Path(sys.executable).resolve():
+        return Path(getattr(sys, "_base_executable", sys.executable)).resolve()
+    config = python.parent.parent / "pyvenv.cfg"
+    try:
+        for line in config.read_text(encoding="utf-8").splitlines():
+            name, _, value = line.partition("=")
+            if name.strip() == "home":
+                candidate = Path(value.strip()) / python.name
+                if candidate.is_file():
+                    return candidate.resolve()
+    except OSError:
+        pass
+    return python
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("extension_id", help="Chrome extension ID allowed to connect")
     parser.add_argument("--python", default=sys.executable, help="Python interpreter used by the host wrapper")
     parser.add_argument("--directory", help="Host installation directory (default: %%LOCALAPPDATA%%\\Chimera\\browser-host)")
+    parser.add_argument(
+        "--server-executable",
+        help=(
+            "Image of the process that serves the pipe, i.e. the running Chimera app. Default: the base "
+            "interpreter behind --python (a venv's python.exe only relaunches it). For the desktop build, "
+            "pass the installed sidecar executable."
+        ),
+    )
     parser.add_argument("--manifest", help="Manifest output path (defaults to the installation directory)")
     parser.add_argument("--apply", action="store_true", help="Write the wrapper, manifest and HKCU registration")
     args = parser.parse_args()
@@ -43,31 +78,50 @@ def main() -> int:
     python = Path(args.python).resolve()
     if args.apply and not python.is_file():
         parser.error(f"Python interpreter does not exist: {python}")
+    server = Path(args.server_executable).resolve() if args.server_executable else _base_interpreter(python)
     root = Path(args.directory) if args.directory else Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData/Local")) / "Chimera" / "browser-host"
     root = root.resolve()
     manifest_path = Path(args.manifest).resolve() if args.manifest else root / "app.chimera.browser.json"
     wrapper = root / "chimera-browser-host.cmd"
-    payload = manifest(args.extension_id, str(wrapper))
+    payload = manifest(args.extension_id, str(wrapper), str(server))
     registry_key = rf"HKCU\Software\Google\Chrome\NativeMessagingHosts\{HOST_NAME}"
     print(json.dumps({
         "manifest_path": str(manifest_path), "manifest": payload, "wrapper_path": str(wrapper),
-        "wrapper": f'@echo off\r\n"{python}" -I -m chimera.browser_host\r\n',
+        "wrapper": (
+            f'@echo off\r\nset "CHIMERA_BROWSER_HOST_EXPECTED_EXE={server}"\r\n'
+            f'"{python}" -I -m chimera.browser_host'
+        ),
         "registry_key": registry_key,
     }, indent=2))
     if args.apply:
         import winreg
+        from typing import Protocol, cast
 
-        from chimera.browser_link import load_or_create_pairing_key
-        from chimera.config import get_settings
+        class _WinregKey(Protocol):
+            def __enter__(self) -> _WinregKey: ...
+            def __exit__(self, exc_type: object, exc: object, traceback: object) -> None: ...
 
-        load_or_create_pairing_key(Path(get_settings().home), create=True)
+        class _Winreg(Protocol):
+            HKEY_CURRENT_USER: object
+            REG_SZ: int
+
+            def CreateKey(self, key: object, sub_key: str) -> _WinregKey: ...
+            def SetValueEx(
+                self, key: _WinregKey, value_name: str, reserved: int, value_type: int, value: str
+            ) -> None: ...
+
+        registry = cast(_Winreg, winreg)
         root.mkdir(parents=True, exist_ok=True)
-        # newline="" keeps the \r\n as written; text mode on Windows would turn each one into \r\r\n.
-        wrapper.write_text(f'@echo off\r\n"{python}" -I -m chimera.browser_host\r\n', encoding="utf-8", newline="")
+        wrapper.write_bytes(
+            (
+                f'@echo off\r\nset "CHIMERA_BROWSER_HOST_EXPECTED_EXE={server}"\r\n'
+                f'"{python}" -I -m chimera.browser_host'
+            ).encode()
+        )
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
         manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, rf"Software\Google\Chrome\NativeMessagingHosts\{HOST_NAME}") as key:
-            winreg.SetValueEx(key, "", 0, winreg.REG_SZ, str(manifest_path))
+        with registry.CreateKey(registry.HKEY_CURRENT_USER, rf"Software\Google\Chrome\NativeMessagingHosts\{HOST_NAME}") as key:
+            registry.SetValueEx(key, "", 0, registry.REG_SZ, str(manifest_path))
     return 0
 
 
