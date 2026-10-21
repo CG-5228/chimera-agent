@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+## [0.71.0] - 2026-10-21
 ### Added
 
 - **Foundation for browsing in your own Chrome.** A read-only Chrome extension and the engine behind the existing browser tool, so pages read there get the same fence, taint and site list as today. It is not connected to anything yet: the host refuses every request until pairing with the app arrives, and bots and scheduled jobs can never select it. (#1048)
