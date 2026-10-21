@@ -1018,6 +1018,7 @@ def assemble_registry(
                 settings.home,
                 lambda request_id, data: approval_sink.emit({**data, "id": request_id}),
                 wait_seconds=wait_seconds,
+                run_id=run_id or "",
             )
         )
     if approval_sink is not None:
