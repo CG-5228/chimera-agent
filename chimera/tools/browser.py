@@ -21,6 +21,7 @@ Two things are non-negotiable here:
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import threading
@@ -473,6 +474,7 @@ class BrowserTool(Tool):
         viewport_first: bool = False,
         situation: BrowserSituation | None = None,
         reach: BrowserReach | None = None,
+        trusted_sites: str = "",
         cookie_retention: str = "ephemeral",
         conversation_id: str | None = None,
         profile_root: Path | None = None,
@@ -492,6 +494,7 @@ class BrowserTool(Tool):
         # are judged by the same predicate. None, the default and the case with both settings empty,
         # keeps `check_url` here and `is_safe_url` in the driver, exactly as before.
         self.reach = reach
+        self.trusted_sites = trusted_sites
         self.cookie_retention = cookie_retention
         self.conversation_id = conversation_id
         self.profile_root = profile_root
@@ -513,6 +516,8 @@ class BrowserTool(Tool):
         # Google search is a narrower, owner-only approval path when assembled for an attended
         # turn. Standalone tools retain the historical ask_outside fallback.
         self.ask_google: Callable[[Any], bool] | None = None
+        # Irreversible Chrome actions are always-ask, independent of the general approval mode.
+        self.ask_action: Callable[[Any], bool] | None = None
         self._clock = clock
         self._sleeper = sleeper
         self._google_turn_searches = 0
@@ -576,6 +581,7 @@ class BrowserTool(Tool):
 
     def _ensure_driver(self) -> BrowserDriver | None:
         if self._driver is not None:
+            self._bind_chrome_governance()
             return self._driver
         try:
             self._driver = self._new_driver()  # constructing it imports playwright
@@ -593,7 +599,19 @@ class BrowserTool(Tool):
                 # cause — and left "exit status 2" with no remedy.
                 raise RuntimeError(f"{exc}; {install_exc}. {_CHROMIUM_HINT}") from exc
             self._driver = self._new_driver()  # …then retry
+        self._bind_chrome_governance()
         return self._driver
+
+    def _bind_chrome_governance(self) -> None:
+        if self._engine != "chrome" or self._driver is None:
+            return
+        for name, value in (
+            ("ask_action", self.ask_action),
+            ("audit", self.audit),
+            ("trusted_sites", getattr(self, "trusted_sites", "")),
+        ):
+            with contextlib.suppress(AttributeError, TypeError):
+                setattr(self._driver, name, value)
 
     def _new_driver(self) -> BrowserDriver:
         if self._engine == "chrome":
@@ -956,8 +974,9 @@ def _google_challenge(text: str, url: str) -> bool:
     return "/sorry/" in final or "consent.google." in final or any(
         marker in opening
         for marker in (
-            "recaptcha", "unusual traffic", "tráfego incomum", "não sou um robô",
-            "i'm not a robot", "consent.google.",
+            "recaptcha", "hcaptcha", "turnstile", "just a moment", "verify you are human",
+            "verifique que você é humano", "verifique que voce e humano", "unusual traffic",
+            "tráfego incomum", "não sou um robô", "i'm not a robot", "consent.google.",
         )
     )
 

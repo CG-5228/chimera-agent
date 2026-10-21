@@ -4,11 +4,45 @@ from __future__ import annotations
 
 import base64
 import binascii
+import json
+import re
+from collections.abc import Callable
 from html import escape
 from pathlib import Path
 from typing import Protocol
+from urllib.parse import urlsplit
 
 from chimera.tools.browser import BrowserFrame, Element
+
+#: Provider frames commonly used to collect payment details.
+_PAYMENT_FRAME_PATTERNS = ("stripe", "adyen", "pagseguro", "mercadopago", "paypal")
+_SENSITIVE_FIELD = re.compile(
+    r"password|senha|passwort|contrase[nñ]a|mot\s+de\s+passe|passcode|secret|"
+    r"cvv|cvc|csc|card\s*number|security\s+code|c[oó]digo\s+de\s+seguran|n[uú]mero\s+do\s+cart[aã]o|"
+    r"n[uú]mero\s+de\s+tarjeta|kartennummer|\bpin\b|token|2fa|otp|"
+    r"c[oó]digo\s+de\s+verifica|verification\s+code",
+    re.IGNORECASE,
+)
+_DOWNLOAD_SUFFIXES = (
+    ".exe", ".msi", ".zip", ".dmg", ".apk", ".pkg", ".bat", ".js", ".deb", ".iso", ".rar", ".7z",
+)
+_SENSITIVE_AUTOCOMPLETE = {"one-time-code", "current-password", "new-password"}
+_IRREVERSIBLE_ACTION = re.compile(
+    r"\b(?:buy|purchas|pay|checkout|order|submit|send|delet|remov|publish|post|transfer|"
+    r"accept|agree|sign|subscrib|confirm|finaliz|cancel|unsubscribe|logout|close account|"
+    r"donat|compr|pag|pedido|envi|exclu|apag|public|transfer|aceit|assin|elimin|borr|"
+    r"envoyer|payer|acheter|supprim|publ|transfér|accepter|signer|kaufen|bezahl|bestell|"
+    r"senden|lösch|veröffentlich|überweis|akzeptier|unterschreib|doar|cancelar assinatura|"
+    r"fechar conta|購入|支払|注文|送信|削除|公開|転送|同意|구매|결제|주문|전송|삭제|게시|동의)\w*",
+    re.IGNORECASE,
+)
+# Scripts without word spacing: `\b` needs a boundary these do not have (`今すぐ購入`, a verb right after
+# hiragana), so the CJK and Hangul words are matched anywhere in the label.
+_IRREVERSIBLE_CJK = re.compile(
+    "購入|支払|注文|送信|削除|公開|転送|同意|確認|確定|決定|取消|解約|寄付|閉鎖|登録|"
+    "购买|支付|下单|提交|删除|发布|转账|"
+    "구매|결제|주문|전송|삭제|게시|동의"
+)
 
 
 class ChromeTransport(Protocol):
@@ -27,6 +61,11 @@ class ChromeExtensionDriver:
         self._request_id = 0
         self._closed = False
         self._backend_nodes: dict[str, int] = {}
+        self._elements_by_ref: dict[str, Element] = {}
+        self._pending_audit: tuple[str, str, str, str, str | bool | None, int] | None = None
+        self.ask_action: Callable[[object], bool] | None = None
+        self.audit: object = None
+        self.trusted_sites = ""
 
     def _request(self, operation: str, **payload: object) -> object:
         if self._closed and operation != "close":
@@ -74,6 +113,7 @@ class ChromeExtensionDriver:
                 backend_nodes[ref] = backend_id
             result.append(Element(ref=ref, role=role, name=name[:120]))
         self._backend_nodes = backend_nodes
+        self._elements_by_ref = {element.ref: element for element in result}
         return result
 
     def navigate(self, url: str) -> list[Element]:
@@ -83,11 +123,303 @@ class ChromeExtensionDriver:
     def read(self) -> list[Element]:
         return self._elements(self._request("read"))
 
+    def _backend_node(self, ref: str) -> int:
+        node = self._backend_nodes.get(ref)
+        if node is None:
+            raise KeyError(f"unknown or stale ref {ref!r}; read the page again")
+        return node
+
+    def describe(self, ref: str) -> dict[str, object]:
+        result = self._request("describe", ref_node=self._backend_node(ref))
+        if not isinstance(result, dict):
+            raise ValueError("Chrome extension returned invalid target description")
+        return {**result, "ref": ref}
+
     def click(self, ref: str) -> list[Element]:
-        raise RuntimeError("click is not available until E2")
+        self._backend_node(ref)
+        description = self.describe(ref)
+        self._guard_action("click", description)
+        try:
+            result = self._request(
+                "click", ref_node=self._backend_node(ref), expected=_target_summary(description),
+            )
+        except Exception:
+            self._finish_audit("error")
+            raise
+        elements = self._action_elements(result)
+        self._finish_audit("ok")
+        return elements
 
     def type_text(self, ref: str, text: str) -> list[Element]:
-        raise RuntimeError("type_text is not available until E2")
+        self._backend_node(ref)
+        description = self.describe(ref)
+        self._guard_action("type", description, text=text)
+        replaced_length = 0
+        if _field(description, "tag").casefold() in {"input", "textarea"}:
+            raw_length = description.get("valueLength", 0)
+            if isinstance(raw_length, (int, float)):
+                replaced_length = max(0, int(raw_length))
+        try:
+            result = self._request(
+                "type", ref_node=self._backend_node(ref), text=text, expected=_target_summary(description),
+            )
+        except Exception:
+            self._finish_audit("error")
+            raise
+        if not isinstance(result, dict):
+            raise ValueError("Chrome extension returned invalid action result")
+        raw_length = result.get("replacedLength", replaced_length)
+        if isinstance(raw_length, (int, float)):
+            replaced_length = max(0, int(raw_length))
+        elements = self._action_elements(result)
+        self._finish_audit("ok")
+        if replaced_length:
+            elements.insert(0, Element(
+                ref="", role="status", name=f"substituiu {replaced_length} caracteres",
+            ))
+        return elements
+
+    def _finish_audit(self, result: str) -> None:
+        pending = getattr(self, "_pending_audit", None)
+        if pending is None:
+            return
+        host, action, role, name, approved_by, text_length = pending
+        self._pending_audit = None
+        audit = getattr(self, "audit", None)
+        if audit is not None:
+            try:
+                audit.record(
+                    "browser.action",
+                    {
+                        "host": host,
+                        "action": action,
+                        "role": role,
+                        "name": name,
+                        "result": result,
+                        "approved_by": approved_by,
+                        **({"text_length": text_length} if action == "type" else {}),
+                    },
+                )
+            except Exception:  # noqa: BLE001 — audit failure cannot change an action result
+                return
+
+    def _action_elements(self, result: object) -> list[Element]:
+        if not isinstance(result, dict) or "elements" not in result:
+            raise ValueError("Chrome extension returned invalid action result")
+        return self._elements(result["elements"])
+
+    def _guard_action(
+        self, action: str, target: dict[str, object], *, text: str = ""
+    ) -> None:
+        from urllib.parse import urlsplit
+
+        host = ""
+        try:
+            current = urlsplit(self.current_url())
+            host = (current.hostname or "").lower()
+        except Exception as exc:  # noqa: BLE001 — do not act without origin confirmation
+            self._record_action("", action, "", "", "refused", None, text)
+            raise RuntimeError("Could not verify browser origin; the action did not run.") from exc
+        element = self._elements_by_ref.get(str(target.get("ref", "")))
+        role = _field(target, "role") or (element.role if element is not None else "")
+        name = _field(target, "accessibleName") or (element.name if element is not None else "")
+        identity_values = [
+            _field(target, key)
+            for key in (
+                "name", "id", "ariaLabel", "label", "placeholder", "accessibleName",
+                "axName", "resolvedAccessibleName", "formMethodOverride", "formActionOverride",
+                "formTargetOverride",
+            )
+        ]
+        identity_values.extend(_strings(target.get("labels")))
+        identity_values.append(_field(target, "text"))
+        identity_values.append(_field(target, "frameUrl"))
+        if element is not None:
+            identity_values.append(element.name)
+        autocomplete_tokens = _field(target, "autocomplete").casefold().split()
+        tag = _field(target, "tag").casefold()
+        input_type = _field(target, "type").casefold()
+        frame_url = _field(target, "frameUrl").casefold()
+        is_payment_frame = any(marker in frame_url for marker in _PAYMENT_FRAME_PATTERNS)
+        sensitive = (
+            (tag == "input" and input_type == "password")
+            or any(token.startswith("cc-") or token in _SENSITIVE_AUTOCOMPLETE for token in autocomplete_tokens)
+            or any(_SENSITIVE_FIELD.search(value) for value in identity_values)
+            or is_payment_frame
+        )
+        if sensitive:
+            self._refuse(host, action, role, name, text, "sensitive target or payment frame")
+        if _page_is_challenge(self):
+            self._refuse(host, action, role, name, text, "CAPTCHA or robot verification detected")
+        if _download_or_upload(target):
+            reason = "file upload is disabled" if tag == "input" and input_type == "file" else "downloads are disabled"
+            self._refuse(host, action, role, name, text, reason)
+
+        if action == "click" and len(_field(target, "href")) > 2000:
+            self._refuse(
+                host, action, role, name, text,
+                "link URL exceeds 2,000 characters; use navigate with the URL instead",
+            )
+        allowed_search = False
+        if action == "type":
+            role_name = role.casefold()
+            allowed_search = bool(name.strip()) and (
+                role_name == "searchbox" or (tag == "input" and input_type == "search")
+            )
+        irreversible = action == "click" and self._irreversible(target, identity_values)
+        frame_host = ""
+        try:
+            from chimera.tools.browser_reach import ascii_host
+
+            frame_host = ascii_host(urlsplit(_field(target, "frameUrl")).hostname or "")
+            page_host = ascii_host(host)
+        except ValueError:
+            page_host = host
+        foreign_frame = bool(
+            frame_host and frame_host != page_host and not self._site_trusted(frame_host)
+        )
+        replaced_content = action == "type" and _field(target, "tag").casefold() in {
+            "input", "textarea",
+        } and bool(target.get("valueLength", 0))
+        needs_approval = irreversible or foreign_frame or replaced_content or (
+            not allowed_search and not self._site_trusted(host)
+        )
+        approved_by: str | bool | None = None
+        if needs_approval:
+            if not self._request_approval(host, action, role, name, text, target):
+                self._record_action(host, action, role, name, "refused", False, text)
+                raise RuntimeError("Owner refused browser action; the action did not run; do not retry.")
+            approved_by = "owner"
+        self._pending_audit = (host, action, role, name[:120], approved_by, len(text))
+
+    @staticmethod
+    def _irreversible(target: dict[str, object], identity_values: list[str]) -> bool:
+        tag = _field(target, "tag").casefold()
+        input_type = _field(target, "type").casefold()
+        form_overrides = any(
+            _field(target, key).strip()
+            for key in (
+                "formMethodOverride", "formActionOverride", "formTargetOverride",
+            )
+        )
+        if (
+            (
+                tag == "button"
+                and (target.get("hasForm") is True or bool(_field(target, "form")))
+                and input_type in {"", "submit"}
+            )
+            or (tag in {"input", "button"} and input_type in {"submit", "image"})
+            or (tag in {"input", "button"} and form_overrides)
+            or (tag in {"input", "button", "a"} and form_overrides)
+        ):
+            return True
+        if tag == "label" and target.get("forSubmitInput") is True:
+            return True
+        href = _field(target, "href")
+        if href:
+            from urllib.parse import urlsplit
+
+            try:
+                parsed = urlsplit(href)
+            except ValueError:
+                parsed = None
+            if parsed is not None and parsed.scheme.casefold() in {
+                "javascript", "data", "blob", "vbscript",
+            }:
+                return True
+            href_text = f"{parsed.path} {parsed.query}" if parsed is not None else href
+            if _IRREVERSIBLE_ACTION.search(href_text):
+                return True
+        return any(
+            _IRREVERSIBLE_ACTION.search(value) or _IRREVERSIBLE_CJK.search(value)
+            for value in identity_values
+        )
+
+    def _site_trusted(self, host: str) -> bool:
+        # Ports are intentionally ignored: this preference is a host list, not an origin list.
+        if not host:
+            return False
+        import ipaddress
+
+        from chimera.tools.browser_reach import ascii_host, parse_sites
+
+        host = host.strip()
+        if host.startswith("["):
+            try:
+                parsed_host = urlsplit(f"//{host}").hostname or ""
+            except ValueError:
+                return False
+        elif host.count(":") == 1:
+            parsed_host = host.rsplit(":", 1)[0]
+        else:
+            parsed_host = host
+        host = ascii_host(parsed_host)
+        try:
+            address = ipaddress.ip_address(host)
+        except ValueError:
+            address = None
+        local_host = host == "localhost" or (
+            address is not None and (address.is_loopback or address.is_private)
+        )
+        settings = getattr(self, "trusted_sites", "")
+        try:
+            sites = parse_sites(str(settings or ""), trusted=True)
+        except ValueError:
+            return False
+        return any(
+            host == site or (
+                not local_host and site.startswith("*.") and host != site[2:]
+                and host.endswith("." + site[2:])
+            )
+            for site in sites
+        )
+
+    def _request_approval(
+        self, host: str, action: str, role: str, name: str, text: str,
+        target: dict[str, object],
+    ) -> bool:
+        approver = self.ask_action
+        if approver is None:
+            self._refuse(host, action, role, name, text, "owner approval required")
+            return False
+        question = type("BrowserActionQuestion", (), {})()
+        question.reason = f"Approve browser {action} on {host or 'unknown host'}"
+        question.action = f"{action}: {role or 'unknown role'}: {name}"
+        if action == "click" and _field(target, "href"):
+            question.action += f" -> {_field(target, 'href')}"
+        if action == "type":
+            question.action += f" (text length {len(text)})"
+            if target.get("valueLength"):
+                question.action += f" (substituiu {target['valueLength']} caracteres)"
+        return bool(approver(question))
+
+    def _refuse(
+        self, host: str, action: str, role: str, name: str, text: str, reason: str
+    ) -> None:
+        self._record_action(host, action, role, name, "refused", None, text)
+        raise RuntimeError(f"{reason}. The browser action did not run; do not retry.")
+
+    def _record_action(
+        self, host: str, action: str, role: str, name: str, result: str,
+        approved_by: str | bool | None, text: str,
+    ) -> None:
+        audit = getattr(self, "audit", None)
+        if audit is not None:
+            try:
+                audit.record(
+                    "browser.action",
+                    {
+                        "host": host,
+                        "action": action,
+                        "role": role,
+                        "name": name[:120],
+                        "result": result,
+                        "approved_by": approved_by,
+                        **({"text_length": len(text)} if action == "type" else {}),
+                    },
+                )
+            except Exception:  # noqa: BLE001 — audit failure cannot change a safety decision
+                return
 
     def back(self) -> list[Element]:
         self._request("back")
@@ -139,6 +471,82 @@ class ChromeExtensionDriver:
             return
         self._request("close")
         self._closed = True
+
+def _field(value: dict[str, object], key: str) -> str:
+    item = value.get(key, "")
+    return str(item) if isinstance(item, (str, int, float)) else ""
+
+
+def _strings(value: object) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list):
+        return [item for item in value if isinstance(item, str)]
+    return []
+
+
+def _numeric_length(value: object) -> int:
+    return int(value) if isinstance(value, (int, float)) else 0
+
+
+def _target_summary(target: dict[str, object]) -> str:
+    return json.dumps(
+        [
+            _field(target, "tag"),
+            _field(target, "type"),
+            _field(target, "autocomplete"),
+            _field(target, "axName") or _field(target, "accessibleName"),
+            _field(target, "href"), _field(target, "target"), bool(target.get("download")),
+            bool(target.get("hasForm")), _field(target, "formMethod"),
+            # Not `hasEventListeners`: an SPA re-renders listeners onto its root or `window` between the
+            # describe and the action, so a summary carrying it refused real clicks after an approval.
+            _field(target, "ping"), _field(target, "frameUrl"),
+            bool(target.get("forSubmitInput")), _field(target, "formMethodOverride"),
+            _field(target, "formActionOverride"), _field(target, "formTargetOverride"),
+            _numeric_length(target.get("valueLength", 0)),
+        ],
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+
+
+def _download_or_upload(target: dict[str, object]) -> bool:
+    tag = _field(target, "tag").casefold()
+    input_type = _field(target, "type").casefold()
+    if tag == "input" and input_type == "file":
+        return True
+    if tag == "label" and target.get("forFileInput") is True:
+        return True
+    href = _field(target, "href").split("?", 1)[0].split("#", 1)[0].casefold()
+    link_like = tag == "a" or bool(_field(target, "href"))
+    return link_like and (bool(target.get("download")) or href.endswith(_DOWNLOAD_SUFFIXES))
+
+
+def _page_is_challenge(driver: ChromeExtensionDriver) -> bool:
+    try:
+        from chimera.tools.browser import _google_challenge
+
+        page_text = driver.page_text()
+        opening = "\n".join(page_text.splitlines()[:40]).casefold()
+        challenge_markers = (
+            "recaptcha", "hcaptcha", "turnstile", "just a moment", "verify you are human",
+            "verifique que você é humano", "verifique que voce e humano", "robot check",
+        )
+        if _google_challenge(page_text, driver.current_url()) or any(
+            marker in opening for marker in challenge_markers
+        ):
+            return True
+        frames = driver._request("challenge_frames")
+        return isinstance(frames, list) and any(
+            re.search(r"recaptcha|hcaptcha|turnstile|challenges\.cloudflare", str(url), re.IGNORECASE)
+            for url in frames
+        )
+    except Exception:  # noqa: BLE001 — if challenge inspection fails, fail closed
+        return True
+
+
+def ref_label(target: dict[str, object]) -> str:
+    return _field(target, "role")
 
 
 def _ax_string(value: object) -> str:
