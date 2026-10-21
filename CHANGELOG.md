@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.72.0] - 2026-10-21
 ### Added
 
 - **The Chrome extension is ready for the store, and only your own screen hands Chimera your Chrome.** The extension's popup is back (it holds Stop and the per-site permission button, which the previous version had lost), with icons, a reproducible package and a page that states each permission and what happens to page content: it goes to the app and from there to the model provider you configured. A turn opened with the server token alone no longer gets your Chrome; downloads triggered by a page are denied; cancelling Chrome's debugging bar stops everything; replying, sharing, forwarding and inviting ask first; and with the bridge's full control on, an irreversible action or a Google search in your Chrome is still approved only on the app's screen. (#1056)
