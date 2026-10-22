@@ -2687,6 +2687,13 @@ class SettingsSuggestionOut(BaseModel):
     a card whose file changed after it was shown is not applied."""
 
 
+class PreviewItem(BaseModel):
+    """A single labeled value shown on an approval card before a browser action is allowed."""
+
+    label: str
+    value: str
+
+
 class ApprovalOut(BaseModel):
     """One question waiting for a person, written by `pending.ask_durably` from an attended surface."""
 
@@ -2696,6 +2703,10 @@ class ApprovalOut(BaseModel):
     irreversible: bool = False
     """Whether the browser action may submit, purchase, publish or otherwise commit; the card then
     offers no "always on this site"."""
+
+    preview: list[PreviewItem] = Field(default_factory=list)
+    typed_text: str = ""
+    """Text typed into a browser field, shown only on the approval card."""
 
     kind: str = ""
     """Empty for a question a tool call is parked on; ``settings_suggestion`` for a settings change
