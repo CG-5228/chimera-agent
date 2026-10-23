@@ -1,5 +1,5 @@
 ---
-source_sha256: d4dc57476a5ef43343f96dfe46424b9883b2039ce6f92133c0f6917981bf8c70
+source_sha256: 6b2e412ec468cf2e42add60b1e9ed3d6a41f4e7f0dac7b2ddea926c43584abdb
 ---
 
 # Bezpieczeństwo i zabezpieczenia
@@ -317,3 +317,7 @@ zasadnie potrzebne narzędzia pozostają otwartymi problemami (śledzone jako
 Pełna, zawsze aktualna polityka żyje w
 [SECURITY.md](https://github.com/brcampidelli/chimera-agent/blob/main/SECURITY.md), łącznie z
 tym, jak zgłosić lukę.
+
+## Ograniczenia obejścia uprawnień sesji
+
+Opcjonalne obejście uprawnień sesji kodu jest uwierzytelniane kluczem HMAC generowanym w pamięci procesu; klucz nigdy nie jest zapisywany na dysku ani dziedziczony przez procesy potomne. Zapisane flagi `bypass_permissions` i kolejkowane atestacje `via_screen` bez prawidłowego HMAC są ignorowane. Wybór uprawnień obowiązuje więc tylko do ponownego uruchomienia procesu aplikacji/usługi; po nim obejście jest domyślnie wyłączone. Powłoka nadal może edytować JSON, ale nie sfałszuje atestacji. Leksykalne blokady odrzucają wykryte Git push, publikowanie pakietów/kontenerów i wybrane mutacje API GitHub, rozpoznane tokeny z plików sekretów (w tym `.npmrc`, `.netrc`, `.pypirc`, `.git-credentials` i poświadczenia AWS) oraz wybrane opcje wysyłania/danych HTTP lub zdalne cele `rsync`/`scp`. To heurystyki, nie granica bezpieczeństwa: nie można zagwarantować wykrycia nazw rozwijanych przez glob, takich jak `cat .e*`, dynamicznie składanych ciągów, takich jak `python -c "open('.'+'env')"`, alternatywnych kodowań, wrapperów ani poleceń spoza rozpoznawanej składni. Złośliwa strona nadal może je ominąć. Do niezaufanej pracy używaj izolowanego sandboxa.
