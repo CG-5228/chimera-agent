@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { Download, History as HistoryIcon, LayoutGrid, Lock, Palette, X } from "lucide-react";
+import { Download, History as HistoryIcon, LayoutGrid, Lock, Palette, Share2, X } from "lucide-react";
 
 import { DesignAssistant } from "@/components/design/DesignAssistant";
 import { Elapsed } from "@/components/code/Elapsed";
-import { ExportDialog, VersionsDialog } from "@/components/design/DesignDialogs";
+import { ExportDialog, RenameDialog, ShareLinkDialog, VersionsDialog } from "@/components/design/DesignDialogs";
 import { DesignList } from "@/components/design/DesignList";
+import { DesignMenu, DesignMenuItem } from "@/components/design/DesignMenu";
 import { DesignTokensPanel } from "@/components/design/DesignTokensPanel";
 import { DesignWorkspace } from "@/components/design/DesignWorkspace";
 import { SaveIndicator } from "@/components/design/SaveIndicator";
@@ -14,7 +15,11 @@ import { ErrorState } from "@/components/ui/async";
 import { focusRing } from "@/components/ui/focus";
 import { Spinner } from "@/components/ui/panel";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useOptionalToast } from "@/components/ui/toast";
 import { record } from "@/lib/design/history";
+import { applyDesignOps, createDesign, deleteDesign } from "@/lib/api";
+import { shareLinkFor } from "@/lib/design/deepLink";
+import { newId } from "@/lib/design/model";
 import type { DesignOperation } from "@/lib/design/model";
 import type { CodeDesignFrame } from "@/lib/design/frames";
 import { applyOps, DesignOpError } from "@/lib/design/ops";
@@ -52,7 +57,25 @@ function HeaderButton({ label, onClick, children }: { label: string; onClick: ()
   );
 }
 
-function Header({ title, children, onList, onClose, drawingStartedAt }: { title: string; children?: ReactNode; onList?: () => void; onClose: () => void; drawingStartedAt?: number }) {
+/** The header's title is the heading; `actions` replaces its text with a control (the title menu).
+ *  While the agent is still drawing, the title gives way to the "Creating…" status and its elapsed time. */
+function Header({
+  title,
+  actions,
+  children,
+  onList,
+  onClose,
+  onShare,
+  drawingStartedAt,
+}: {
+  title: string;
+  actions?: ReactNode;
+  children?: ReactNode;
+  onList?: () => void;
+  onClose: () => void;
+  onShare?: () => void;
+  drawingStartedAt?: number;
+}) {
   const t = useT();
   const name = t("design.pane.name");
   return (
@@ -65,9 +88,14 @@ function Header({ title, children, onList, onClose, drawingStartedAt }: { title:
         </span>
       ) : (
         <h2 className="min-w-0 flex-1 truncate text-sm font-medium text-foreground" title={title}>
-          {title}
+          {actions ?? title}
         </h2>
       )}
+      {onShare ? (
+        <HeaderButton label={t("design.header.share")} onClick={onShare}>
+          <Share2 className="h-3.5 w-3.5" aria-hidden="true" />
+        </HeaderButton>
+      ) : null}
       {children}
       {onList ? (
         <HeaderButton label={t("design.pane.list")} onClick={onList}>
@@ -88,6 +116,7 @@ function DesignEditor({
   agentEdit,
   onList,
   onClose,
+  onOpen,
   autosaveMs,
   drawingStartedAt,
 }: {
@@ -96,16 +125,20 @@ function DesignEditor({
   agentEdit?: AgentEdit | null;
   onList: () => void;
   onClose: () => void;
+  onOpen: (id: string | null, brief?: string) => void;
   autosaveMs: number;
   drawingStartedAt?: number;
 }) {
   const t = useT();
+  const toast = useOptionalToast();
   const session = useDesignSession(id, autosaveMs);
   const [selection, setSelection] = useState<string[]>([]);
   const [jump, setJump] = useState<{ ids: string[]; key: number } | undefined>(undefined);
   const [openBoard, setOpenBoard] = useState<{ id: string; key: number } | undefined>(undefined);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [shareLink, setShareLink] = useState<string | null>(null);
   const { doc, agentEdited, agentFrame } = session;
 
   useEffect(() => {
@@ -138,8 +171,101 @@ function DesignEditor({
   );
 
   const title = doc?.title ?? t("design.pane.name");
+
+  const rename = (next: string) => {
+    setRenameOpen(false);
+    if (!next || !doc || next === title) return;
+    const ops: DesignOperation[] = [{ type: "document.rename", title: next }];
+    try {
+      const result = applyOps(doc, ops);
+      session.onOps(ops, result);
+      session.setHistory(record(session.history, { forward: ops, inverse: result.inverse, label: "design.header.rename", at: Date.now() }));
+    } catch (error) {
+      if (!(error instanceof DesignOpError)) throw error;
+    }
+  };
+
+  /** A copy is made in two steps (create, then apply the content). If the second fails, the empty copy
+   *  is deleted so the list does not fill with orphans, and the person hears about it. */
+  const duplicate = async () => {
+    if (!doc) return;
+    let copy: { id: string; revision: number } | null = null;
+    try {
+      copy = await createDesign(t("design.header.copyTitle", { title }));
+      const pageIds = new Map(doc.pages.map((page) => [page.id, newId("page")]));
+      const boardIds = new Map(doc.pages.flatMap((page) => page.artboards.map((board) => [board.id, newId("artboard")] as const)));
+      const nodeIds = new Map<string, string>();
+      const assignIds = (nodeId: string): void => {
+        const node = doc.nodes[nodeId];
+        if (!node || nodeIds.has(nodeId)) return;
+        nodeIds.set(nodeId, newId("node"));
+        if (node.type === "group") node.childIds.forEach(assignIds);
+      };
+      doc.pages.forEach((page) => page.artboards.forEach((board) => board.nodeIds.forEach(assignIds)));
+      const ops: DesignOperation[] = [{ type: "tokens.replace", tokens: doc.tokens }];
+      for (const page of doc.pages) {
+        ops.push({ type: "page.add", page: { id: pageIds.get(page.id)!, name: page.name, artboards: [] } });
+        for (const board of page.artboards) {
+          ops.push({ type: "artboard.add", pageId: pageIds.get(page.id)!, artboard: { ...board, id: boardIds.get(board.id)!, nodeIds: [] } });
+          for (const rootId of board.nodeIds) {
+            const root = doc.nodes[rootId];
+            if (!root) continue;
+            const cloneNode = (source: typeof root): typeof root => {
+              const cloned = { ...source, id: nodeIds.get(source.id)!, frame: { ...source.frame } };
+              if (cloned.type === "group" && source.type === "group") cloned.childIds = source.childIds.map((child) => nodeIds.get(child)!);
+              return cloned;
+            };
+            const descendants: typeof root[] = [];
+            const collect = (childId: string): void => {
+              const child = doc.nodes[childId];
+              if (!child) return;
+              descendants.push(cloneNode(child));
+              if (child.type === "group") child.childIds.forEach(collect);
+            };
+            if (root.type === "group") root.childIds.forEach(collect);
+            ops.push({ type: "node.add", pageId: pageIds.get(page.id)!, artboardId: boardIds.get(board.id)!, node: cloneNode(root), ...(root.type === "group" ? { children: descendants } : {}) });
+          }
+        }
+      }
+      for (const comment of doc.comments) {
+        const artboardId = boardIds.get(comment.artboardId);
+        if (artboardId) ops.push({ type: "comment.add", comment: { ...comment, id: newId("comment"), artboardId, ...(comment.nodeId ? { nodeId: nodeIds.get(comment.nodeId) } : {}) } });
+      }
+      await applyDesignOps(copy.id, copy.revision, ops);
+      onOpen(copy.id);
+    } catch {
+      if (copy) await deleteDesign(copy.id).catch(() => undefined);
+      toast(t("design.header.duplicateError"), "bad");
+    }
+  };
+
+  /** Copy the local link to this design. Where the clipboard refuses, the link is shown to copy by hand. */
+  const share = async () => {
+    const link = shareLinkFor(window.location.href, id);
+    try {
+      await navigator.clipboard.writeText(link);
+      toast(t("design.header.shareCopied"), "ok");
+    } catch {
+      setShareLink(link);
+    }
+  };
+
+  const titleMenu = (
+    <DesignMenu
+      className="max-w-full text-sm font-medium text-foreground"
+      trigger={<span className="truncate">{title}</span>}
+      items={
+        <>
+          <DesignMenuItem onSelect={() => setRenameOpen(true)}>{t("design.header.rename")}</DesignMenuItem>
+          <DesignMenuItem onSelect={() => void duplicate()}>{t("design.header.duplicate")}</DesignMenuItem>
+          <DesignMenuItem onSelect={() => setExportOpen(true)}>{t("design.header.export")}</DesignMenuItem>
+        </>
+      }
+    />
+  );
+
   const header = (
-    <Header title={title} onList={onList} onClose={onClose} drawingStartedAt={drawingStartedAt}>
+    <Header title={title} actions={titleMenu} onList={onList} onClose={onClose} onShare={() => void share()} drawingStartedAt={drawingStartedAt}>
       {session.load === "ready" ? (
         <>
           <SaveIndicator
@@ -203,6 +329,8 @@ function DesignEditor({
       <div className="flex min-h-0 flex-1 flex-col">{body}</div>
       <VersionsDialog open={versionsOpen} onOpenChange={setVersionsOpen} designId={id} session={session} />
       <ExportDialog open={exportOpen} onOpenChange={setExportOpen} designId={id} session={session} />
+      <RenameDialog open={renameOpen} onOpenChange={setRenameOpen} title={title} onRename={rename} />
+      <ShareLinkDialog link={shareLink} onOpenChange={(open) => { if (!open) setShareLink(null); }} />
     </>
   );
 }
@@ -246,6 +374,7 @@ export default function DesignPane({
           agentEdit={agentEdit}
           onList={() => onOpen(null)}
           onClose={onClose}
+          onOpen={onOpen}
           autosaveMs={autosaveMs}
           drawingStartedAt={drawingStartedAt}
         />
