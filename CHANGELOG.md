@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Chimera Design: designs with several screens get an index page generated from the artboards, links between screens, and navigation in the canvas and the preview. (#1101)
 - Chimera Design: comments anchored to the canvas, with threads you can resolve, a Comments panel that jumps to the element, and the agent reads the open comments and resolves them when addressed. (#1095)
 
 - **Chimera Design now works like a designer at your side.** When you ask for a visual design, the agent first says what it is going for (concept, palette, typography), lists its plan as a checklist that updates as it goes, and builds the design screen by screen. It does not touch your project's code until you approve the design. The design opens beside the conversation as soon as the agent starts it, the card in the conversation opens it with one click, and the tool list says what happened ("Design: updated"). (#1090)
