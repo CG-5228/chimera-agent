@@ -11,8 +11,8 @@ steps:
     with:
       task: >
         You are preparing release notes for this git repository. Use the run_shell tool to inspect
-        recent commit history with `git log -n 20 --oneline --no-decorate` and `git diff --stat HEAD~5..HEAD`
-        (fall back to `git status --short` if fewer commits exist). Group the changes into clear
+        recent commit history with `git log -n 20 --oneline --no-decorate` and `git log --stat -n 5`
+        (fall back to `git status --short` if no commits exist yet). Group the changes into clear
         sections (`## Highlights`, `## Changes`, `## Breaking / Notes`) in `release_notes.md`,
         citing short commit hashes for concrete traceability. Do not edit any tracked source files.
       verify: "python -c \"import pathlib; t=pathlib.Path('release_notes.md').read_text(); assert '##' in t and len(t.strip()) > 40\""
