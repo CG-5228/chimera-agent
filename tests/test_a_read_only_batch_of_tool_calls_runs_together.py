@@ -32,12 +32,17 @@ class _Slow(Tool):
     description = "slow"
     parameters: dict[str, Any] = {"type": "object", "properties": {"x": {"type": "string"}}}
     log: list[tuple[str, float, float, int]] = []
+    # Set by a test that must prove the calls overlap: every call waits here before it starts, so
+    # the batch is released only once all of its parties are in flight together.
+    rendezvous: threading.Barrier | None = None
 
     def __init__(self, name: str, delay: float = 0.2) -> None:
         self.name = name
         self.delay = delay
 
     def run(self, **kwargs: Any) -> str:
+        if _Slow.rendezvous is not None:
+            _Slow.rendezvous.wait()
         began = time.monotonic()
         time.sleep(self.delay)
         _Slow.log.append((self.name, began, time.monotonic(), threading.get_ident()))
@@ -100,11 +105,14 @@ def _run(
 # ------------------------------------------------------------------ the speed half, measured
 
 
-def test_four_read_only_calls_run_together_and_the_step_says_so() -> None:
-    result, backend, elapsed = _run(["read_file", "read_file", "http_get", "grep"])
+def test_four_read_only_calls_run_together_and_the_step_says_so(monkeypatch: Any) -> None:
+    # All four must be inside the tools at once to get past the barrier; run in turn, the first
+    # waits out the timeout and its observation becomes an error, failing the asserts below.
+    monkeypatch.setattr(_Slow, "rendezvous", threading.Barrier(4, timeout=5))
+    result, backend, _ = _run(["read_file", "read_file", "http_get", "grep"])
 
+    assert len(_Slow.log) == 4, f"expected four completed calls, logged {len(_Slow.log)}"
     assert _overlapping(), "no two calls were in flight at once — it did not run together"
-    assert elapsed < 0.6, f"in turn this batch costs 0.8 s; together it took {elapsed:.2f} s"
     assert len({t for _, _, _, t in _Slow.log}) > 1, "ran on one thread — it did not run together"
     assert result.steplog.steps[0].ran_together == 4
     assert result.steplog.steps[0].as_dict()["ran_together"] == 4
@@ -157,14 +165,19 @@ def test_observations_come_back_in_the_models_order_whatever_finished_first() ->
     assert finished_first == "grep", "the fast one finished first and still came second"
 
 
-def test_the_batch_is_bounded_to_four_at_once() -> None:
-    result, _, elapsed = _run(["read_file"] * 8)
+def test_the_batch_is_bounded_to_four_at_once(monkeypatch: Any) -> None:
+    # Eight calls in rounds of four. The barrier of four releases a round only when four calls are
+    # in flight together, so the peak reaches four; it cannot deadlock here because eight is a
+    # multiple of four. The peak is then counted from the recorded in-flight spans, so a fifth
+    # concurrent call would show up as a peak of five and fail the exact check.
+    monkeypatch.setattr(_Slow, "rendezvous", threading.Barrier(PARALLEL_READ_WORKERS, timeout=5))
+    result, _, _ = _run(["read_file"] * 8)
 
+    assert len(_Slow.log) == 8, f"expected eight completed calls, logged {len(_Slow.log)}"
     assert result.steplog.steps[0].ran_together == 8
-    assert _overlapping()
-    assert _most_at_once() <= PARALLEL_READ_WORKERS == 4, "more than four in flight at once"
-    # Eight fifths of a second in turn; two rounds of four together.
-    assert elapsed < 1.2, f"{elapsed:.2f} s — not together (>= 1.6 s in turn)"
+    assert _most_at_once() == PARALLEL_READ_WORKERS == 4, (
+        f"peak in flight was {_most_at_once()}, expected exactly {PARALLEL_READ_WORKERS}"
+    )
 
 
 def test_a_failing_call_in_the_batch_is_an_error_observation_for_that_call_only() -> None:
