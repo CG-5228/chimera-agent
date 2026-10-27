@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **"Ignore permissions" covers turns sent through the desktop bridge.** When you turn it on for a conversation on the screen, turns another tool sends into that conversation through the desktop bridge no longer stop for approval. Paired devices and plain API tokens still do, and only the screen can switch the mode. (#1132)
+
 - **A calmer Code screen.** A finished turn shows a short receipt (tool calls, failures, files, server, media, verification) with "show all" for the rest, and big diffs fold. The header keeps what matters and puts every other action in a "⋯" menu. On narrow windows the side panel becomes a drawer. (#1131)
 
 ### Fixed
