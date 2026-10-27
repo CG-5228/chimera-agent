@@ -10760,14 +10760,23 @@ export interface components {
             /** Ratio */
             ratio: number;
         };
-        /** McpAddRequest */
+        /**
+         * McpAddRequest
+         * @description Add a server by stdio command (``command``/``args``/``env``) or by a local URL (``url``).
+         *
+         *     Exactly one transport is meant: a URL with ``command`` set, or neither, is refused by the route.
+         *     ``headers`` ride only with a URL; a URL that is not loopback must be https, checked there too.
+         */
         McpAddRequest: {
             /**
              * Args
              * @default []
              */
             args: string[];
-            /** Command */
+            /**
+             * Command
+             * @default
+             */
             command: string;
             /**
              * Env
@@ -10776,8 +10785,17 @@ export interface components {
             env: {
                 [key: string]: string;
             };
+            /**
+             * Headers
+             * @default {}
+             */
+            headers: {
+                [key: string]: string;
+            };
             /** Name */
             name: string;
+            /** Url */
+            url?: string | null;
         };
         /** McpApproveManifestRequest */
         McpApproveManifestRequest: {
@@ -10805,13 +10823,21 @@ export interface components {
             auth: string;
             /** Available */
             available: boolean;
-            /** Command */
+            /**
+             * Command
+             * @default
+             */
             command: string;
             /**
              * Containment
              * @default
              */
             containment: string;
+            /**
+             * Discovery Url
+             * @default
+             */
+            discovery_url: string;
             /**
              * Docs
              * @default
@@ -10821,8 +10847,17 @@ export interface components {
             env?: {
                 [key: string]: string;
             };
+            /** Headers */
+            headers?: {
+                [key: string]: string;
+            };
             /** Id */
             id: string;
+            /**
+             * Install Url
+             * @default
+             */
+            install_url: string;
             /** Label */
             label: string;
             /**
@@ -10835,12 +10870,20 @@ export interface components {
              * @default
              */
             repo: string;
-            /** Runner */
+            /**
+             * Runner
+             * @default
+             */
             runner: string;
             /** Secrets */
             secrets?: components["schemas"]["McpCatalogSecret"][];
             /** Summary */
             summary: string;
+            /**
+             * Url
+             * @default
+             */
+            url: string;
             /** Vendor Orgs */
             vendor_orgs?: string[];
         };
