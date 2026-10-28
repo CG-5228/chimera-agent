@@ -77,8 +77,14 @@ from chimera.api.roles import Profile, RoleModels, RolePlan
 from chimera.api.roles import resolve as resolve_roles
 from chimera.api.schemas import (
     AttachmentOut,
+    CodeBypassReactivateIn,
+    CodeBypassReactivateOut,
+    CodeBypassSavedOut,
+    CodeBypassToggleOut,
     CodeGrantMigrationIn,
     CodeGrantMigrationOut,
+    CodeProjectBypassIn,
+    CodeProjectBypassOut,
     CodeProjectFlagsIn,
     CodeProjectGrantIn,
     CodeProjectIn,
@@ -1592,16 +1598,30 @@ def turn_origin(scope: Any) -> tuple[bool, bool]:
 
 
 def turn_bypass_switch(
-    *, via_screen: bool, via_bridge: bool, session_id: str | None, store: Any
+    *,
+    via_screen: bool,
+    via_bridge: bool,
+    session_id: str | None,
+    store: Any,
+    project_on: Callable[[], bool] | None = None,
 ) -> Callable[[], bool]:
     """The owner's permission switch as a turn reads it, at each question.
 
-    Granted only to a turn the screen started or the desktop bridge forwarded, and only by what the
-    owner stored for the conversation on the screen (`PATCH .../permissions`, refused to the bridge).
-    The bridge can never set it; it can only run in a conversation the owner already switched on.
+    Granted only to a turn the screen started or the desktop bridge forwarded. The switch is on when
+    the conversation's own is on OR its project's is (``project_on``, read at each question, so a
+    project switched on mid-turn releases the very next call). Only the owner's screen can turn either
+    on: the bridge runs inside a switched conversation or project, and cannot switch one.
     """
     eligible = via_screen or via_bridge
-    return lambda: bool(eligible and session_id and store.stored_bypass_permissions(session_id))
+
+    def switch() -> bool:
+        if not eligible:
+            return False
+        if session_id and store.stored_bypass_permissions(session_id):
+            return True
+        return bool(project_on is not None and project_on())
+
+    return switch
 
 
 def _live_flag(value: bool | Callable[[], bool]) -> Callable[[], bool]:
@@ -2516,6 +2536,16 @@ def register_code_api(
     # Beside the conversations, not inside them: a project you have added but not yet worked in
     # has no conversation to hang off, which is the whole reason the list cannot be derived.
     projects = CodeProjectRegistry(settings.home / "code_projects.json")
+    # The conversation switches the owner turned on, saved across restarts (code_session.py). Read
+    # here, once per registration, so a restarted server comes back with the same switches on.
+    from chimera.core.code_session import load_session_bypass
+
+    load_session_bypass(settings.home / "code_bypass_switches.json")
+    # A switch whose conversation was deleted while the server was down goes now (M1), and the list
+    # stays what the owner last saw. Only ids with no stored file are dropped.
+    from chimera.core.code_session import active_switches
+
+    active_switches().prune_conversations(store.exists)
     # The desktop's screen layout (dynamic screen, phase 6), beside the projects for the same reason:
     # the webview's own storage does not survive a reinstall.
     from chimera.core.ui_layout import UiLayoutStore
@@ -2952,6 +2982,16 @@ def register_code_api(
 
     async def _queued_event(item: QueueItem) -> AsyncIterator[dict[str, str]]:
         yield {"event": "queued", "data": json.dumps(queue_item_out(item))}
+
+    def _refuse_bypass_on_in_browser(request: Request, turning_on: bool) -> None:
+        """Refuse switching "Ignore permissions" on from a browser's screen (`screen_credential.may_switch_bypass_on`).
+
+        Runs after the owner-screen test, so it only narrows a request that already came from a screen.
+        Turning OFF always passes.
+        """
+        screen = getattr(request.app.state, "screen_credential", None)
+        if turning_on and not screen_credential.may_switch_bypass_on(screen):
+            raise HTTPException(status_code=403, detail=screen_credential.BROWSER_BYPASS_REFUSAL)
 
     def _session_known(session_id: str) -> bool:
         """A stored conversation, or one whose first turn is still running and not yet saved."""
@@ -3723,6 +3763,7 @@ def register_code_api(
         via_bridge = req._via_bridge and background is None and not req.channel_origin and not guest_turn
         bypass_switch = turn_bypass_switch(
             via_screen=via_screen, via_bridge=via_bridge, session_id=req.session_id, store=store,
+            project_on=lambda: projects.bypass_for(ws),
         )
         agent, ledger = build_agent(
             req, ws, facts, note, approval_sink=approval_sink, frame_sink=frame_sink,
@@ -5715,12 +5756,13 @@ def register_code_api(
             for sid, t in running.items()
             if sid not in stored
         ]
-        from chimera.core.code_session import session_bypass
-
+        memo: dict[str, bool] = {}
         for row in (*unsaved, *rows):
-            # The process's switch, for stored and unsaved conversations alike: the file never holds it,
-            # and a list without it made the screen's label read "off" for every conversation.
-            row["bypass_permissions"] = session_bypass(str(row["id"]))
+            # The switch as a turn will read it, for stored and unsaved conversations alike: its own,
+            # or its project's. A list without it made the label read "off" for every conversation.
+            source = _bypass_source(str(row["id"]), str(row.get("workspace") or ""), memo)
+            row["bypass_permissions"] = bool(source)
+            row["bypass_source"] = source
         listed = [r for r in (*unsaved, *rows) if (r["archived_at"] is not None) == archived]
         return sorted(listed, key=lambda r: float(r["updated_at"]), reverse=True)
 
@@ -5881,21 +5923,70 @@ def register_code_api(
         "works": len(work_store.active_parents()),
     }
 
+    def _bypass_source(session_id: str, workspace: str, memo: dict[str, bool]) -> str:
+        """Where a conversation's switch comes from: its own, its project's, or nowhere (empty).
+
+        ``memo`` keeps a list from resolving the same folder once per row.
+        """
+        from chimera.core.code_session import session_bypass
+
+        if session_bypass(session_id):
+            return "conversation"
+        if workspace:
+            if workspace not in memo:
+                memo[workspace] = projects.bypass_for(workspace)
+            if memo[workspace]:
+                return "project"
+        return ""
+
     @app.patch(
         "/api/code/sessions/{session_id}/permissions",
         dependencies=[guard],
+        response_model=CodeBypassToggleOut,
     )
     def toggle_code_bypass(request: Request, session_id: str, req: dict[str, Any]) -> dict[str, Any]:
-        """Process-local owner-window toggle; the bridge has no route for this."""
+        """Process-local owner-window toggle; the bridge has no route for this.
+
+        Turning it ON also answers the cards of this conversation that are already waiting, when the
+        switch may release them (`governance/waiting_release.py`). The refusals above run first, so the
+        bridge and a paired device cannot reach that release either.
+        """
         if not request.scope.get(screen_credential.SCOPE_KEY) or request.scope.get(VIA_BRIDGE_SCOPE_KEY) or request.scope.get(DEVICE_SCOPE_KEY):
             raise HTTPException(status_code=403, detail="owner screen credential required")
+        enabled = bool(req.get("bypass_permissions", False))
+        _refuse_bypass_on_in_browser(request, enabled)
         if not _session_known(session_id):
             raise HTTPException(status_code=404, detail="no such conversation")
         from chimera.core.code_session import set_session_bypass
+        from chimera.governance.audit import AuditLog
+        from chimera.governance.waiting_release import (
+            WaitingRelease,
+            in_conversation,
+            release_waiting_cards,
+        )
 
-        enabled = bool(req.get("bypass_permissions", False))
-        set_session_bypass(session_id, enabled)
-        return {"id": session_id, "bypass_permissions": enabled}
+        try:
+            warning = set_session_bypass(session_id, enabled)
+        except OSError as exc:
+            # Nothing changed in memory either: the file is written first (bypass_switches.py).
+            raise HTTPException(
+                status_code=500,
+                detail="could not save the permission switch; nothing was changed",
+            ) from exc
+        released = WaitingRelease(approved_waiting=0, left_waiting=0)
+        if enabled:
+            home = Path(live().home)
+            released = release_waiting_cards(
+                home, belongs=in_conversation(session_id), origin_of=approval_origin,
+                audit=AuditLog(home / "audit.jsonl"),
+            )
+        return {
+            "id": session_id,
+            "bypass_permissions": enabled,
+            "approved_waiting": released.approved_waiting,
+            "left_waiting": released.left_waiting,
+            "warning": warning,
+        }
 
     @app.post(
         "/api/code/sessions/{session_id}/seen",
@@ -6026,7 +6117,8 @@ def register_code_api(
             "id": session_id,
             "workspace": str(data.get("workspace") or ""),
             "selected_model": str(data.get("selected_model") or ""),
-            "bypass_permissions": store.stored_bypass_permissions(session_id),
+            "bypass_permissions": bool(_bypass_source(session_id, str(data.get("workspace") or ""), {})),
+            "bypass_source": _bypass_source(session_id, str(data.get("workspace") or ""), {}),
             "exchanges": attach_receipts(exchanges_from_messages(messages), receipts),
         }
 
@@ -6255,6 +6347,7 @@ def register_code_api(
                     "path": row.path,
                     "alias": row.alias,
                     "shell_granted": row.shell_granted,
+                    "bypass_permissions": projects.project_switch_on(row.path),
                     "granted_at": row.granted_at,
                     "pinned": row.pinned,
                     "last_used_at": row.last_used_at,
@@ -6308,6 +6401,121 @@ def register_code_api(
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         return _project_rows(rows)
+
+    @app.put(
+        "/api/code/workspaces/bypass", dependencies=[guard], response_model=CodeProjectBypassOut
+    )
+    def set_code_workspace_bypass(request: Request, body: CodeProjectBypassIn) -> dict[str, Any]:
+        """Turn the project-wide "Ignore permissions" on or off: every conversation of the folder.
+
+        The owner's screen only, by the same test as the conversation's switch: the bridge and a paired
+        device are refused, and this route is not in the bridge's route table. Turning it on also
+        answers the cards of that project's conversations that are already waiting and releasable
+        (governance/waiting_release.py). Turning it off answers nothing.
+        """
+        if not request.scope.get(screen_credential.SCOPE_KEY) or request.scope.get(VIA_BRIDGE_SCOPE_KEY) or request.scope.get(DEVICE_SCOPE_KEY):
+            raise HTTPException(status_code=403, detail="owner screen credential required")
+        _refuse_bypass_on_in_browser(request, body.bypass_permissions)
+        from chimera.governance.audit import AuditLog
+        from chimera.governance.waiting_release import (
+            WaitingRelease,
+            in_project,
+            release_waiting_cards,
+        )
+
+        try:
+            warning = projects.set_bypass(body.path, body.bypass_permissions)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except OSError as exc:
+            # The registration is written before the switch (code_projects.set_bypass), so a failure
+            # here leaves the switch as it was: the message says exactly that.
+            raise HTTPException(
+                status_code=500,
+                detail="could not save the permission switch; the switch is unchanged",
+            ) from exc
+        released = WaitingRelease(approved_waiting=0, left_waiting=0)
+        key = projects.project_key_for(body.path)
+        if body.bypass_permissions and key:
+            home = Path(live().home)
+            released = release_waiting_cards(
+                home,
+                belongs=in_project(projects.project_key_for, key),
+                origin_of=approval_origin,
+                audit=AuditLog(home / "audit.jsonl"),
+            )
+        return {
+            "path": body.path,
+            "bypass_permissions": body.bypass_permissions,
+            "approved_waiting": released.approved_waiting,
+            "left_waiting": released.left_waiting,
+            "warning": warning,
+        }
+
+    @app.get("/api/code/bypass/saved", dependencies=[guard], response_model=CodeBypassSavedOut)
+    def saved_bypass_switches() -> dict[str, Any]:
+        """The switches saved on disk that this process has not confirmed yet, listed for the banner.
+
+        Lists only; it turns nothing on, and a bridge or a paired device may read it. A conversation
+        with no title is shown by its id.
+        """
+        from chimera.core.code_session import active_switches
+
+        saved_projects, saved_conversations = active_switches().saved_entries()
+        titles: dict[str, str] = {}
+        if saved_conversations:
+            for row in store.list_meta(store.marks.all()):
+                titles[str(row["id"])] = str(row.get("title") or "")
+        return {
+            "projects": saved_projects,
+            "conversations": [
+                {"id": sid, "title": titles.get(sid) or sid} for sid in saved_conversations
+            ],
+        }
+
+    @app.post(
+        "/api/code/bypass/reactivate", dependencies=[guard], response_model=CodeBypassReactivateOut
+    )
+    def reactivate_saved_bypass(request: Request, body: CodeBypassReactivateIn) -> dict[str, Any]:
+        """The owner's one click on the entries the banner showed: confirm them, and answer the cards they release.
+
+        Owner's screen only, and refused from a browser's screen when it would switch anything on. The
+        body names the exact entries the owner was shown. Each saved one that is listed becomes live; a
+        saved one that is NOT listed is dropped from the file (the owner did not recognise it), and an
+        id that was never saved is ignored. Empty lists discard every saved switch and turn nothing on,
+        so that stays allowed from a browser. A switch the disk holds is not a switch until this is
+        pressed in this process. Waiting cards of the conversations and projects that are now on are
+        answered the same way a switch turned on by hand answers them (governance/waiting_release.py).
+        """
+        if not request.scope.get(screen_credential.SCOPE_KEY) or request.scope.get(VIA_BRIDGE_SCOPE_KEY) or request.scope.get(DEVICE_SCOPE_KEY):
+            raise HTTPException(status_code=403, detail="owner screen credential required")
+        _refuse_bypass_on_in_browser(request, bool(body.projects or body.conversations))
+        from chimera.core.code_session import active_switches
+        from chimera.governance.audit import AuditLog
+        from chimera.governance.waiting_release import release_waiting_cards, switched_on
+
+        switches = active_switches()
+        try:
+            reactivated_projects, reactivated_conversations = switches.reactivate(
+                body.projects, body.conversations,
+            )
+        except OSError as exc:
+            raise HTTPException(
+                status_code=500, detail="could not save the switches; nothing was reactivated",
+            ) from exc
+        home = Path(live().home)
+        released = release_waiting_cards(
+            home,
+            belongs=switched_on(switches.conversation_on, switches.project_on, projects.project_key_for),
+            origin_of=approval_origin,
+            audit=AuditLog(home / "audit.jsonl"),
+        )
+        return {
+            "reactivated_projects": reactivated_projects,
+            "reactivated_conversations": reactivated_conversations,
+            "approved_waiting": released.approved_waiting,
+            "left_waiting": released.left_waiting,
+        }
 
     @app.put(
         "/api/code/workspaces/model", dependencies=[guard], response_model=list[CodeProjectOut]

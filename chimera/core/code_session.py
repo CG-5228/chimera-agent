@@ -36,6 +36,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 
 from chimera.core.agent import AgentResult, ToolActivity, is_guidance
 from chimera.core.agent_batch_note import batch_note_message, is_batch_note
+from chimera.core.bypass_switches import BypassSwitches, open_switches
 from chimera.core.checkout import Checkout, checkout_of
 from chimera.core.code_session_marks import (
     CodeSessionMarks,
@@ -49,21 +50,37 @@ from chimera.core.redact import redact_json
 from chimera.providers.gateway import MessageLike
 from chimera.telemetry import get_logger
 
-_SESSION_BYPASS: dict[str, bool] = {}
-_SESSION_BYPASS_LOCK = threading.RLock()
+#: The switches this server uses. Memory only until the API says where they are saved
+#: (:func:`load_session_bypass`); see ``chimera/core/bypass_switches.py`` for why the disk is never
+#: the authority for them.
+_ACTIVE: BypassSwitches = BypassSwitches(None)
 
 
-def set_session_bypass(session_id: str, enabled: bool) -> None:
-    with _SESSION_BYPASS_LOCK:
-        if enabled:
-            _SESSION_BYPASS[session_id] = True
-        else:
-            _SESSION_BYPASS.pop(session_id, None)
+def load_session_bypass(path: Path | None) -> None:
+    """Use the switches saved at ``path``: read once per process, shared by every reader after that."""
+    global _ACTIVE
+    _ACTIVE = open_switches(path)
+
+
+def active_switches() -> BypassSwitches:
+    return _ACTIVE
 
 
 def session_bypass(session_id: str) -> bool:
-    with _SESSION_BYPASS_LOCK:
-        return _SESSION_BYPASS.get(session_id, False)
+    """Whether the conversation's own switch is on in memory (a saved one is not, until confirmed)."""
+    return _ACTIVE.conversation_on(session_id)
+
+
+def set_session_bypass(session_id: str, enabled: bool) -> str | None:
+    """Switch one conversation on or off. Turning ON raises :class:`BypassSaveError` with memory
+    unchanged; turning OFF always applies and returns a warning if the file could not be rewritten."""
+    return _ACTIVE.set_conversation(session_id, enabled)
+
+
+def forget_session_bypass(session_id: str) -> None:
+    """The conversation is gone: its switch goes with it."""
+    _ACTIVE.forget_conversation(session_id)
+
 
 if TYPE_CHECKING:
     from chimera.orchestration.budget import SpendBudget
@@ -1114,7 +1131,17 @@ class CodeSessionStore:
                 self._derived_checkouts[workspace] = found
         return found
 
+    def exists(self, session_id: str) -> bool:
+        """Whether a conversation file is stored for this id (an unusable id is not stored)."""
+        try:
+            return self._path(session_id).is_file()
+        except ValueError:
+            return False
+
     def delete(self, session_id: str) -> bool:
+        # Its "Ignore permissions" goes with it (M1), before the file check: a conversation that was
+        # never saved can still hold a switch, and it must not outlive the conversation it named.
+        forget_session_bypass(session_id)
         path = self._path(session_id)
         if not path.is_file():
             return False

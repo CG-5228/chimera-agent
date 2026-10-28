@@ -310,6 +310,8 @@ class CodeSessionMetaOut(BaseModel):
     #: titled from its id and date, and left on disk untouched (study 34, item 9).
     damaged: bool = False
     bypass_permissions: bool = False
+    #: Where the switch comes from when it is on: ``conversation`` or ``project``; "" when it is off.
+    bypass_source: str = ""
     #: Why it did not parse, when ``damaged`` (the parser's first words).
     damage: str = ""
 
@@ -379,6 +381,58 @@ class CodeSessionDoneOut(BaseModel):
     done: bool
 
 
+class CodeBypassSavedConversation(BaseModel):
+    """A conversation whose switch is saved, shown to the owner by title (its id when it has none)."""
+
+    id: str
+    title: str
+
+
+class CodeBypassSavedOut(BaseModel):
+    """The switches saved on disk and not yet confirmed by the screen in this process, listed.
+
+    ``projects`` are the folder paths the switches belong to; ``conversations`` carry id and title.
+    The banner shows exactly these, and the one click may confirm only these.
+    """
+
+    projects: list[str] = Field(default_factory=list)
+    conversations: list[CodeBypassSavedConversation] = Field(default_factory=list)
+
+
+class CodeBypassReactivateIn(BaseModel):
+    """The entries the owner was shown and confirms. Anything saved and not listed is discarded.
+
+    Both lists are required, and may be empty: an empty pair is the banner's "dismiss".
+    """
+
+    projects: list[str] = Field(max_length=1000)
+    conversations: list[str] = Field(max_length=1000)
+
+
+class CodeBypassReactivateOut(BaseModel):
+    """What the one-click reactivation confirmed, and what it did to the waiting cards."""
+
+    reactivated_projects: int = 0
+    reactivated_conversations: int = 0
+    approved_waiting: int = 0
+    left_waiting: int = 0
+
+
+class CodeBypassToggleOut(BaseModel):
+    """The owner's permission switch as the server now holds it, and what it did to the waiting cards.
+
+    ``approved_waiting`` counts the cards the switch answered yes just now; ``left_waiting`` counts the
+    cards of this conversation still waiting, which the owner has to answer. Both are zero when the
+    switch was turned off. ``warning`` is set only when turning it OFF could not be saved to disk.
+    """
+
+    id: str
+    bypass_permissions: bool
+    approved_waiting: int = 0
+    left_waiting: int = 0
+    warning: str | None = None
+
+
 class CodeSessionSeenOut(BaseModel):
     """Whether marking a conversation seen changed anything: false when there was nothing unseen."""
 
@@ -408,6 +462,8 @@ class CodeProjectOut(BaseModel):
     last_used_at: str = ""
     """When a coding turn last started here, ISO-8601 UTC. Empty = never."""
     hidden: bool = False
+    bypass_permissions: bool = False
+    """The owner's project-wide "Ignore permissions": every conversation here runs with it on."""
     """Removed from the lists by the owner. Kept as a row so a folder with conversations does not
     reappear the moment it is removed; hiding also revoked any grant and pin it had."""
     model: str = ""
@@ -428,6 +484,26 @@ class CodeProjectFlagsIn(BaseModel):
     path: str
     pinned: bool | None = None
     hidden: bool | None = None
+
+
+class CodeProjectBypassIn(BaseModel):
+    """Turn the project-wide "Ignore permissions" on or off. Its own route, screen-only."""
+
+    path: str
+    bypass_permissions: bool
+
+
+class CodeProjectBypassOut(BaseModel):
+    """The project's switch as now held, and what turning it on did to the waiting cards of its conversations.
+
+    ``warning`` is set only when turning it OFF could not be saved to disk: it is off in this process.
+    """
+
+    path: str
+    bypass_permissions: bool
+    approved_waiting: int = 0
+    left_waiting: int = 0
+    warning: str | None = None
 
 
 class CodeProjectGrantIn(BaseModel):
@@ -721,6 +797,7 @@ class CodeSessionOut(BaseModel):
     #: follows the install default — so a reopened conversation's picker shows what will answer.
     selected_model: str = ""
     bypass_permissions: bool = False
+    bypass_source: str = ""
     exchanges: list[CodeExchangeOut]
     #: Set while a turn of this conversation is running. A screen follows it instead of showing a
     #: conversation that looks idle while it is working.

@@ -60,6 +60,7 @@ import { HtmlPreview } from "@/components/code/HtmlPreview";
 import { ProjectPicker } from "@/components/code/ProjectPicker";
 import { ProjectPackCard } from "@/components/code/ProjectPackCard";
 import { useRunSession } from "@/lib/run-session";
+import { screenInBrowser } from "@/lib/server";
 import { useNum, useT } from "@/lib/i18n";
 import { useLayout } from "@/lib/layout/context";
 import { useConversationSidePublisher } from "@/lib/conversation-side";
@@ -706,11 +707,21 @@ export function Code() {
   const onToggleBypass = async () => {
     if (!sessionId || bypassPending) return;
     const enabled = !bypassOn;
+    // The browser's screen cannot turn it on (server: screen_credential.may_switch_bypass_on). Turning off is fine.
+    if (enabled && screenInBrowser()) {
+      toastRef.current?.(t("code.bypass.browserOnly"), "info");
+      return;
+    }
     setBypassPending(true);
     setBypassError(false);
     try {
       const result = await patchCodeBypass(sessionId, enabled);
       setBypassKnown((known) => ({ ...known, [result.id]: result.bypass_permissions }));
+      if (result.warning) toastRef.current?.(t("code.bypass.offNotSaved"), "info");
+      // Turning it on answered the cards already waiting where the switch may; the rest still wait.
+      if (result.left_waiting > 0) {
+        toastRef.current?.(t("code.permissions.leftWaiting", { n: result.left_waiting }), "info");
+      }
       queryClient.setQueryData<CodeSessionMeta[]>(["code-sessions"], (sessions) =>
         sessions?.map((session) => session.id === result.id
           ? { ...session, bypass_permissions: result.bypass_permissions }
@@ -1122,6 +1133,7 @@ export function Code() {
             key={conversationKey}
             resumeSession={sessionId}
             bypassPermissions={bypassOn}
+            bypassSource={currentSessionMeta?.bypass_source ?? ""}
             onBypassPermissionsChange={onToggleBypass}
             // Only over the default: a style the person picked while the conversation loaded is
             // theirs, and the stored one is a fact about the past turn, not a newer choice.
@@ -1190,10 +1202,11 @@ export function Code() {
               <div className="flex flex-col gap-1.5">
                 {sessionId ? (
                   <>
-                    <Button type="button" variant="outline" size="sm" className="self-start" disabled={bypassPending} onClick={() => void onToggleBypass()}>
+                    <Button type="button" variant="outline" size="sm" className="self-start" disabled={bypassPending || (bypassOn && currentSessionMeta?.bypass_source === "project")} onClick={() => void onToggleBypass()}>
                       {t(bypassOn ? "code.permissions.disable" : "code.permissions.enable")}
                     </Button>
                     {bypassError ? <span role="alert" className="text-sm text-bad-foreground">{t("code.permissions.error")}</span> : null}
+                    {!bypassOn && screenInBrowser() ? <span className="text-sm text-muted-foreground">{t("code.bypass.browserOnly")}</span> : null}
                   </>
                 ) : null}
                 {/* Minimised, the three pickers are one line of chips (dynamic screen, phase 4). The

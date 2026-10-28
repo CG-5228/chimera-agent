@@ -11,6 +11,8 @@ vi.mock("@/lib/api", async (importOriginal) => {
   return {
     ApiError: actual.ApiError,
     getApprovals: vi.fn(async () => []),
+    getSavedBypass: vi.fn(async () => ({ projects: [], conversations: [] })),
+    reactivateSavedBypass: vi.fn(),
     listCodeSessions: vi.fn(),
     listRunningTurns: vi.fn(async () => []),
     listCodeProjects: vi.fn(),

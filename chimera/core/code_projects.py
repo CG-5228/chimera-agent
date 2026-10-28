@@ -52,6 +52,7 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 
+from chimera.core.bypass_switches import SWITCH_FILE_NAME, BypassSwitches, open_switches
 from chimera.core.own_files import is_device_or_unc
 
 log = logging.getLogger(__name__)
@@ -60,6 +61,13 @@ log = logging.getLogger(__name__)
 MAX_PROJECTS = 500
 MAX_PATH = 4096
 MAX_ALIAS = 200
+#: What turning a project's switch OFF says when the folder's registration could not be saved. The
+#: switch itself is already off in this process; the registration only decides whether the folder is
+#: listed after a restart.
+REGISTRY_OFF_NOT_SAVED = (
+    "The project switch is off in this process, but saving the project list to disk failed. The "
+    "folder may not be listed after a restart."
+)
 _REGISTRY_LOCKS: dict[Path, threading.RLock] = {}
 _REGISTRY_LOCKS_GUARD = threading.Lock()
 
@@ -100,7 +108,6 @@ class RegisteredProject:
     """SHA-256 of the explicitly approved project setup command."""
     model: str = ""
     """Model used when a conversation in this project has no turn or conversation model."""
-
 
 class AppWorktreeRegistry:
     """Server-owned mapping from an app-created worktree to its resolved parent project."""
@@ -397,6 +404,88 @@ class CodeProjectRegistry:
         A process that already has shell access on the host can write CHIMERA_HOME, just as it can
         edit the project registry itself; this does not protect against an already-compromised host.
         """
+        return self._row_for(workspace, granted_only=True)
+
+    def bypass_for(self, workspace: Path | str) -> bool:
+        """Whether the owner's project-wide "Ignore permissions" covers this folder.
+
+        Answered from memory: the switch is what the screen approved in this process, never what the
+        file says. Without any project switch on, nothing is read at all. Otherwise the same resolution
+        as :meth:`project_for` (the folder, or the project an app-made worktree came from), except that
+        a worktree inherits the switch without a shell grant: the switch is about asking.
+        """
+        switches = self._switches()
+        if not switches.any_project_on():
+            return False
+        row = self._row_for(workspace, granted_only=False)
+        key = _resolved(row.path) if row is not None else None
+        return key is not None and switches.project_on(str(key))
+
+    def project_switch_on(self, path: str) -> bool:
+        """Whether the switch is on for this exact registered folder (the row list's answer)."""
+        switches = self._switches()
+        key = _resolved(path)
+        return key is not None and switches.any_project_on() and switches.project_on(str(key))
+
+    def _switches(self) -> BypassSwitches:
+        return open_switches(self.path.parent / SWITCH_FILE_NAME)
+
+    def project_key_for(self, workspace: Path | str) -> str:
+        """The resolved path of the project a folder belongs to, or "" when none is registered.
+
+        What a waiting card is matched on when the owner turns a project's switch on: two folders
+        are one project when they resolve to the same registered row.
+        """
+        row = self._row_for(workspace, granted_only=False)
+        return str(_resolved(row.path)) if row is not None else ""
+
+    def set_bypass(self, path: str, enabled: bool) -> str | None:
+        """Turn the project-wide switch on or off for one folder, registering it if it was not.
+
+        Refused for a hidden folder: the lists no longer show it, so a switch on it would be one the
+        owner cannot see or take back from where they are looking.
+
+        Turning ON writes the registration first, then the switch. Had the switch gone first, a failed
+        registration write after it would leave the switch on while the owner was told nothing had
+        changed. A failed switch write (raises BypassSaveError) then leaves the switch as it was; the
+        registration of a folder is not a permission, so at worst the folder is listed with its switch
+        off.
+
+        Turning OFF goes the other way round, as the switches do (bypass_switches.py): the switch goes
+        off in memory first, so the owner's "off" holds in this process whatever the disk does. Had the
+        registration write come first, a failed write would raise before the switch changed, and the
+        switch would stay ON in memory while the owner was refused. The registration write that follows
+        is best-effort: its failure is logged and reported as a warning, never raised.
+
+        Returns a warning when turning OFF could not be saved.
+        """
+        value = _clean(path, MAX_PATH, "path")
+        with self._lock:
+            rows = self._read()
+            row = self._find_or_add(rows, value)
+            if enabled and row.hidden:
+                raise ValueError("this folder is hidden; unhide it before turning its switch on")
+            key = _resolved(row.path)
+            if key is None:
+                raise ValueError("this folder cannot be resolved")
+            if not enabled:
+                return self._turn_switch_off(rows, row, str(key))
+            self._put(rows, row)
+            self._write(rows)
+            return self._switches().set_project(str(key), True)
+
+    def _turn_switch_off(self, rows: list[RegisteredProject], row: RegisteredProject, key: str) -> str | None:
+        """Turn one folder's switch OFF in memory, then save the registration best-effort."""
+        warning = self._switches().set_project(key, False)
+        self._put(rows, row)
+        try:
+            self._write(rows)
+        except OSError as exc:
+            log.warning("project switch turned off, but the registry could not be saved: %s", exc)
+            return warning or REGISTRY_OFF_NOT_SAVED
+        return warning
+
+    def _row_for(self, workspace: Path | str, *, granted_only: bool) -> RegisteredProject | None:
         target = _resolved(str(workspace))
         if target is None:
             return None
@@ -435,7 +524,7 @@ class CodeProjectRegistry:
             if record != parent_root:
                 return None
             return next((
-                row for row in rows if row.shell_granted and not row.hidden
+                row for row in rows if (row.shell_granted or not granted_only) and not row.hidden
                 and _resolved(row.path) == parent_root
             ), None)
         except (OSError, ValueError, RuntimeError, TypeError, AttributeError):
@@ -642,6 +731,11 @@ class CodeProjectRegistry:
             self._write(rows)
             if row.hidden:
                 self._invalidate_prepared(_resolved(row.path))
+                # The project switch goes with the grant: a switch on a folder nobody can see is
+                # one the owner cannot take back from where they are looking.
+                key = _resolved(row.path)
+                if key is not None:
+                    self._switches().forget_project(str(key))
             return rows
 
     def setup_retry_allowed(self, workspace: Path | str, command_hash: str) -> bool:

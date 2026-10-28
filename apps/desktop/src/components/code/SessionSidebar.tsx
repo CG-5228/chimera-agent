@@ -10,6 +10,9 @@ import {
   flagCodeProject,
   forgetCodeProject,
   forkCodeSession,
+  getSavedBypass,
+  reactivateSavedBypass,
+  setCodeProjectBypass,
   getCodeSessionRaw,
   listArchivedCodeSessions,
   listCodeSessions,
@@ -22,12 +25,14 @@ import {
   type CodeSessionMeta,
   type CodeSessionState,
 } from "@/lib/api";
+import { screenInBrowser } from "@/lib/server";
 import { ProjectHeader, type ExtraProjectAction } from "@/components/code/ProjectHeader";
 import { SessionRow, rowActionClass, type SessionRowActions } from "@/components/code/SessionRow";
 import { SessionTitleEditor, focusSessionRow } from "@/components/code/SessionTitleEditor";
 import { SidebarToolbar, type StateFilter } from "@/components/code/SidebarToolbar";
 import { WorktreesDialog } from "@/components/code/WorktreesDialog";
 import { HideRegionButton } from "@/components/shell/RegionToggle";
+import { useOptionalToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { focusRing } from "@/components/ui/focus";
@@ -86,6 +91,21 @@ export function SessionSidebar({
 }) {
   const t = useT();
   const qc = useQueryClient();
+  const toast = useOptionalToast();
+  // The switches saved on disk and not yet confirmed here: one click confirms them all.
+  const savedBypass = useQuery({ queryKey: ["code-bypass-saved"], queryFn: getSavedBypass });
+  // The click names exactly the entries listed below; the server drops the rest. Dismiss sends two
+  // empty lists, which turns nothing on, so it is allowed from the browser too.
+  const reactivate = useMutation({
+    mutationFn: (shown: { projects: string[]; conversations: string[] }) => reactivateSavedBypass(shown),
+    onSuccess: (result) => {
+      void qc.invalidateQueries({ queryKey: ["code-projects"] });
+      void qc.invalidateQueries({ queryKey: ["code-sessions"] });
+      void qc.invalidateQueries({ queryKey: ["code-bypass-saved"] });
+      if (result.left_waiting > 0) toast(t("code.permissions.leftWaiting", { n: result.left_waiting }), "info");
+    },
+    onError: () => toast(t("code.bypass.reactivateError"), "bad"),
+  });
   const q = useQuery({ queryKey: ["code-sessions"], queryFn: listCodeSessions });
   // Which conversations have a turn running, asked often because the answer is kept in memory on the
   // server and is one small list. A turn keeps running when the screen that started it goes away, so
@@ -240,6 +260,18 @@ export function SessionSidebar({
     mutationFn: (path: string) => flagCodeProject(path, { hidden: true }),
     onSuccess: (next) => qc.setQueryData(["code-projects"], next),
   });
+  // The project's switch: its conversations (and their waiting cards) follow it, so both lists are
+  // read again rather than patched by hand.
+  const bypass = useMutation({
+    mutationFn: ({ path, on }: { path: string; on: boolean }) => setCodeProjectBypass(path, on),
+    onSuccess: (result) => {
+      void qc.invalidateQueries({ queryKey: ["code-projects"] });
+      void qc.invalidateQueries({ queryKey: ["code-sessions"] });
+      if (result.warning) toast(t("code.bypass.offNotSaved"), "info");
+      if (result.left_waiting > 0) toast(t("code.permissions.leftWaiting", { n: result.left_waiting }), "info");
+    },
+    onError: () => toast(t("code.projects.bypassError"), "bad"),
+  });
   const remove = useMutation({
     mutationFn: async (target: NonNullable<typeof confirming>) => {
       if (target.kind === "session") {
@@ -390,6 +422,36 @@ export function SessionSidebar({
         </Button>
         <HideRegionButton side="left" />
       </div>
+      {savedBypass.data && savedBypass.data.projects.length + savedBypass.data.conversations.length > 0 ? (
+        <div role="status" className="mx-2 mb-2 grid gap-1.5 rounded-md border border-warning/30 bg-warning/10 px-2 py-1.5 text-xs">
+          <span className="min-w-0">{t("code.bypass.saved", { p: savedBypass.data.projects.length, c: savedBypass.data.conversations.length })}</span>
+          <ul className="grid max-h-32 gap-0.5 overflow-y-auto break-all text-muted-foreground">
+            {savedBypass.data.projects.map((path) => (
+              <li key={`p:${path}`}>{path}</li>
+            ))}
+            {savedBypass.data.conversations.map((row) => (
+              <li key={`c:${row.id}`}>{row.title}</li>
+            ))}
+          </ul>
+          {screenInBrowser() ? <span className="text-muted-foreground">{t("code.bypass.browserOnly")}</span> : null}
+          <div className="flex justify-end gap-1.5">
+            <Button size="sm" variant="ghost" disabled={reactivate.isPending} onClick={() => reactivate.mutate({ projects: [], conversations: [] })}>
+              {t("code.bypass.dismiss")}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={reactivate.isPending || screenInBrowser()}
+              onClick={() => reactivate.mutate({
+                projects: savedBypass.data?.projects ?? [],
+                conversations: (savedBypass.data?.conversations ?? []).map((row) => row.id),
+              })}
+            >
+              {t("code.bypass.reactivate")}
+            </Button>
+          </div>
+        </div>
+      ) : null}
       {adding ? (
         <form
           className="flex items-center gap-1 px-2 pb-2"
@@ -474,6 +536,16 @@ export function SessionSidebar({
                       setRenaming(group.key);
                     }}
                     onHide={() => hide.mutate(group.key)}
+                    bypassOn={Boolean(projects.data?.find((row) => row.path === group.key)?.bypass_permissions)}
+                    onToggleBypass={group.key ? () => {
+                      const on = !projects.data?.find((row) => row.path === group.key)?.bypass_permissions;
+                      // The browser's screen is refused the switch-on (server, screen_credential.py): say so here.
+                      if (on && screenInBrowser()) {
+                        toast(t("code.bypass.browserOnly"), "info");
+                        return;
+                      }
+                      bypass.mutate({ path: group.key, on });
+                    } : undefined}
                     onDelete={() => askDeleteProject(group.key)}
                     extraActions={[...cleanupAction(group), ...(projectActions?.(group) ?? [])]}
                   />

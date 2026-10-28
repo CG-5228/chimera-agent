@@ -496,6 +496,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/code/bypass/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reactivate Saved Bypass
+         * @description The owner's one click on the entries the banner showed: confirm them, and answer the cards they release.
+         *
+         *     Owner's screen only, and refused from a browser's screen when it would switch anything on. The
+         *     body names the exact entries the owner was shown. Each saved one that is listed becomes live; a
+         *     saved one that is NOT listed is dropped from the file (the owner did not recognise it), and an
+         *     id that was never saved is ignored. Empty lists discard every saved switch and turn nothing on,
+         *     so that stays allowed from a browser. A switch the disk holds is not a switch until this is
+         *     pressed in this process. Waiting cards of the conversations and projects that are now on are
+         *     answered the same way a switch turned on by hand answers them (governance/waiting_release.py).
+         */
+        post: operations["reactivate_saved_bypass_api_code_bypass_reactivate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/code/bypass/saved": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Saved Bypass Switches
+         * @description The switches saved on disk that this process has not confirmed yet, listed for the banner.
+         *
+         *     Lists only; it turns nothing on, and a bridge or a paired device may read it. A conversation
+         *     with no title is shown by its id.
+         */
+        get: operations["saved_bypass_switches_api_code_bypass_saved_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/code/commands": {
         parameters: {
             query?: never;
@@ -901,6 +952,10 @@ export interface paths {
         /**
          * Toggle Code Bypass
          * @description Process-local owner-window toggle; the bridge has no route for this.
+         *
+         *     Turning it ON also answers the cards of this conversation that are already waiting, when the
+         *     switch may release them (`governance/waiting_release.py`). The refusals above run first, so the
+         *     bridge and a paired device cannot reach that release either.
          */
         patch: operations["toggle_code_bypass_api_code_sessions__session_id__permissions_patch"];
         trace?: never;
@@ -1499,6 +1554,31 @@ export interface paths {
          *     Only ever narrows what the agent may do, so the bridge serves it at its operate tier.
          */
         patch: operations["flag_code_workspace_api_code_workspaces_patch"];
+        trace?: never;
+    };
+    "/api/code/workspaces/bypass": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Code Workspace Bypass
+         * @description Turn the project-wide "Ignore permissions" on or off: every conversation of the folder.
+         *
+         *     The owner's screen only, by the same test as the conversation's switch: the bridge and a paired
+         *     device are refused, and this route is not in the bridge's route table. Turning it on also
+         *     answers the cards of that project's conversations that are already waiting and releasable
+         *     (governance/waiting_release.py). Turning it off answers nothing.
+         */
+        put: operations["set_code_workspace_bypass_api_code_workspaces_bypass_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/code/workspaces/grant": {
@@ -7231,6 +7311,93 @@ export interface components {
             path: string;
         };
         /**
+         * CodeBypassReactivateIn
+         * @description The entries the owner was shown and confirms. Anything saved and not listed is discarded.
+         *
+         *     Both lists are required, and may be empty: an empty pair is the banner's "dismiss".
+         */
+        CodeBypassReactivateIn: {
+            /** Conversations */
+            conversations: string[];
+            /** Projects */
+            projects: string[];
+        };
+        /**
+         * CodeBypassReactivateOut
+         * @description What the one-click reactivation confirmed, and what it did to the waiting cards.
+         */
+        CodeBypassReactivateOut: {
+            /**
+             * Approved Waiting
+             * @default 0
+             */
+            approved_waiting: number;
+            /**
+             * Left Waiting
+             * @default 0
+             */
+            left_waiting: number;
+            /**
+             * Reactivated Conversations
+             * @default 0
+             */
+            reactivated_conversations: number;
+            /**
+             * Reactivated Projects
+             * @default 0
+             */
+            reactivated_projects: number;
+        };
+        /**
+         * CodeBypassSavedConversation
+         * @description A conversation whose switch is saved, shown to the owner by title (its id when it has none).
+         */
+        CodeBypassSavedConversation: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * CodeBypassSavedOut
+         * @description The switches saved on disk and not yet confirmed by the screen in this process, listed.
+         *
+         *     ``projects`` are the folder paths the switches belong to; ``conversations`` carry id and title.
+         *     The banner shows exactly these, and the one click may confirm only these.
+         */
+        CodeBypassSavedOut: {
+            /** Conversations */
+            conversations?: components["schemas"]["CodeBypassSavedConversation"][];
+            /** Projects */
+            projects?: string[];
+        };
+        /**
+         * CodeBypassToggleOut
+         * @description The owner's permission switch as the server now holds it, and what it did to the waiting cards.
+         *
+         *     ``approved_waiting`` counts the cards the switch answered yes just now; ``left_waiting`` counts the
+         *     cards of this conversation still waiting, which the owner has to answer. Both are zero when the
+         *     switch was turned off. ``warning`` is set only when turning it OFF could not be saved to disk.
+         */
+        CodeBypassToggleOut: {
+            /**
+             * Approved Waiting
+             * @default 0
+             */
+            approved_waiting: number;
+            /** Bypass Permissions */
+            bypass_permissions: boolean;
+            /** Id */
+            id: string;
+            /**
+             * Left Waiting
+             * @default 0
+             */
+            left_waiting: number;
+            /** Warning */
+            warning?: string | null;
+        };
+        /**
          * CodeExchangeOut
          * @description One question and everything the agent did answering it.
          *
@@ -7282,6 +7449,40 @@ export interface components {
             projects: components["schemas"]["CodeProjectOut"][];
             /** Recorded */
             recorded: number;
+        };
+        /**
+         * CodeProjectBypassIn
+         * @description Turn the project-wide "Ignore permissions" on or off. Its own route, screen-only.
+         */
+        CodeProjectBypassIn: {
+            /** Bypass Permissions */
+            bypass_permissions: boolean;
+            /** Path */
+            path: string;
+        };
+        /**
+         * CodeProjectBypassOut
+         * @description The project's switch as now held, and what turning it on did to the waiting cards of its conversations.
+         *
+         *     ``warning`` is set only when turning it OFF could not be saved to disk: it is off in this process.
+         */
+        CodeProjectBypassOut: {
+            /**
+             * Approved Waiting
+             * @default 0
+             */
+            approved_waiting: number;
+            /** Bypass Permissions */
+            bypass_permissions: boolean;
+            /**
+             * Left Waiting
+             * @default 0
+             */
+            left_waiting: number;
+            /** Path */
+            path: string;
+            /** Warning */
+            warning?: string | null;
         };
         /**
          * CodeProjectFlagsIn
@@ -7340,6 +7541,11 @@ export interface components {
              * @default
              */
             alias: string;
+            /**
+             * Bypass Permissions
+             * @default false
+             */
+            bypass_permissions: boolean;
             /**
              * Folder Exists
              * @default false
@@ -7465,6 +7671,11 @@ export interface components {
              * @default false
              */
             bypass_permissions: boolean;
+            /**
+             * Bypass Source
+             * @default
+             */
+            bypass_source: string;
             /** Checkout Kind */
             checkout_kind?: ("main" | "worktree" | "plain") | null;
             /**
@@ -7528,6 +7739,11 @@ export interface components {
              * @default false
              */
             bypass_permissions: boolean;
+            /**
+             * Bypass Source
+             * @default
+             */
+            bypass_source: string;
             /** Exchanges */
             exchanges: components["schemas"]["CodeExchangeOut"][];
             /** Id */
@@ -15316,6 +15532,59 @@ export interface operations {
             };
         };
     };
+    reactivate_saved_bypass_api_code_bypass_reactivate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CodeBypassReactivateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CodeBypassReactivateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    saved_bypass_switches_api_code_bypass_saved_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CodeBypassSavedOut"];
+                };
+            };
+        };
+    };
     code_commands_api_code_commands_get: {
         parameters: {
             query?: {
@@ -15921,9 +16190,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["CodeBypassToggleOut"];
                 };
             };
             /** @description Validation Error */
@@ -16913,6 +17180,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CodeProjectOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_code_workspace_bypass_api_code_workspaces_bypass_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CodeProjectBypassIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CodeProjectBypassOut"];
                 };
             };
             /** @description Validation Error */
